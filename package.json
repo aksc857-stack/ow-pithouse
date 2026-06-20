@@ -16,40 +16,54 @@
     "rebuild": "electron-rebuild -f -w serialport"
   },
   "dependencies": {
+    "@serialport/parser-readline": "^12.0.0",
+    "@tabler/icons-webfont": "^3.19.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.12.7",
-    "serialport": "^12.0.0",
-    "@serialport/parser-readline": "^12.0.0"
+    "serialport": "^12.0.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.6.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "electron": "^31.2.1",
+    "electron-builder": "^24.13.3",
+    "sass": "^1.77.8",
     "typescript": "^5.5.3",
     "vite": "^5.3.4",
     "vite-plugin-electron": "^0.28.7",
-    "vite-plugin-electron-renderer": "^0.14.6",
-    "electron": "^31.2.1",
-    "electron-builder": "^24.13.3",
-    "@electron/rebuild": "^3.6.0",
-    "sass": "^1.77.8"
+    "vite-plugin-electron-renderer": "^0.14.6"
   },
   "build": {
     "appId": "com.odrive-wheel.pithouse",
     "productName": "Odrive Wheel Pit House",
-    "directories": { "output": "release" },
-    "files": ["dist", "dist-electron"],
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist",
+      "dist-electron"
+    ],
     "win": {
-      "target": ["nsis", "portable"],
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "public/icon.ico"
     },
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "icon": "public/icon.icns"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "public/icon.png",
       "category": "Utility"
     },

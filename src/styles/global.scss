@@ -103,13 +103,11 @@ input, select { font-family: inherit; }
     &-mark {
       width: 26px; height: 26px;
       border-radius: 7px;
-      background: var(--accent);
-      color: var(--accent-ink);
-      font-weight: 700;
-      font-size: 13px;
-      display: flex; align-items: center; justify-content: center;
+      object-fit: cover;
+      display: block;
     }
-    &-sub { color: var(--text-faint); font-size: 11px; font-weight: 400; }
+    &-ow { color: #fff; font-weight: 700; }
+    &-sub { color: var(--text-faint); font-weight: 400; }
   }
 
   &__device {

@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useDevice } from '@/context/DeviceContext'
+import { useLiveApply } from '@/hooks/useLiveApply'
 import { Toggle, toast } from '@/components/ui'
 import { writeProp } from '@/lib/odrive'
+import { applyWheelField } from '@/lib/ffbConfig'
 import wheelImg from '@/assets/wheel.png'
 
 const ANGLE_PRESETS = [360, 540, 720, 900, 1080]
@@ -9,9 +11,20 @@ const ANGLE_PRESETS = [360, 540, 720, 900, 1080]
 export function Dashboard() {
   const { live, wheelConfig, setWheelConfig, connected, port } = useDevice()
   const [workMode, setWorkMode] = useState(true)
+  const liveApply = useLiveApply()
 
   const angle = wheelConfig.range
-  const setAngle = (v: number) => setWheelConfig({ ...wheelConfig, range: v })
+  // Curseur angle : état UI immédiat + écriture live debouncée.
+  const setAngle = (v: number) => {
+    setWheelConfig({ ...wheelConfig, range: v })
+    if (connected) liveApply('range', () => applyWheelField('range', v))
+  }
+
+  // Curseur intensité FFB (masterGain) : appliqué en direct sur fx.master.
+  const setMasterGain = (v: number) => {
+    setWheelConfig({ ...wheelConfig, masterGain: v })
+    if (connected) liveApply('masterGain', () => applyWheelField('masterGain', v))
+  }
 
   // Wheel rotation visual: follow HID direction (axis.invert flips the sign
   // of the position reported to the game, so the on-screen wheel must match).
@@ -25,12 +38,6 @@ export function Dashboard() {
   const torqueNm = Math.abs(live.torque)
   const torquePct = Math.min(100, (torqueNm / wheelConfig.maxTorque) * 100)
 
-  const applyAngle = async () => {
-    if (!connected) { toast('Connectez la carte d\'abord', 'err'); return }
-    await writeProp('axis.range', angle, 'offb')
-    toast(`Angle réglé à ${angle}°`)
-  }
-
   const center = async () => {
     if (!connected) { toast('Connectez la carte d\'abord', 'err'); return }
     await window.ow.query('axis.zeroenc!')   // OpenFFBoard zero-encoder action
@@ -42,7 +49,16 @@ export function Dashboard() {
     setWheelConfig({ ...wheelConfig, invert: next })
     if (connected) {
       await writeProp('axis.invert', next ? 1 : 0, 'offb')
-      toast(next ? 'Sens HID inversé' : 'Sens HID normal')
+      toast(next ? 'Axe HID inversé' : 'Axe HID normal')
+    }
+  }
+
+  const toggleFfbInvert = async () => {
+    const next = !wheelConfig.ffbInvert
+    setWheelConfig({ ...wheelConfig, ffbInvert: next })
+    if (connected) {
+      await writeProp('axis.ffbinvert', next ? 1 : 0, 'offb')
+      toast(next ? 'FFB inversé' : 'FFB normal')
     }
   }
 
@@ -85,9 +101,16 @@ export function Dashboard() {
                 <button
                   className={`btn btn--sm ${wheelConfig.invert ? 'btn--primary' : ''}`}
                   onClick={toggleInvert}
-                  title="Inverser le sens HID"
+                  title="Inverser le sens de l'axe HID"
                 >
-                  <i className="ti ti-arrows-left-right" /> Inverser
+                  <i className="ti ti-arrows-left-right" /> Inverser l'axe
+                </button>
+                <button
+                  className={`btn btn--sm ${wheelConfig.ffbInvert ? 'btn--primary' : ''}`}
+                  onClick={toggleFfbInvert}
+                  title="Inverser le sens du couple FFB"
+                >
+                  <i className="ti ti-refresh-dot" /> Inverser FFB
                 </button>
                 <button className="btn btn--sm" onClick={center}>Center</button>
               </div>
@@ -97,7 +120,6 @@ export function Dashboard() {
               <input
                 type="range" min={90} max={2700} step={10} value={angle}
                 onChange={(e) => setAngle(parseInt(e.target.value))}
-                onMouseUp={applyAngle}
               />
               <span className="dash-slider-max">2700</span>
               <div className="dash-angle-val">{angle}</div>
@@ -107,7 +129,7 @@ export function Dashboard() {
                 <button
                   key={p}
                   className={`dash-preset ${angle === p ? 'active' : ''}`}
-                  onClick={() => { setAngle(p); setTimeout(applyAngle, 0) }}
+                  onClick={() => setAngle(p)}
                 >
                   {p}
                 </button>
@@ -129,7 +151,7 @@ export function Dashboard() {
               <div className="dash-control-row">
                 <input
                   type="range" min={0} max={100} value={ffbIntensity}
-                  onChange={(e) => setWheelConfig({ ...wheelConfig, masterGain: parseInt(e.target.value) })}
+                  onChange={(e) => setMasterGain(parseInt(e.target.value))}
                 />
                 <span className="dash-control-val">{ffbIntensity} %</span>
               </div>

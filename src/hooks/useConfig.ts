@@ -4,7 +4,7 @@ import type { WheelConfig, MotorConfig } from '@/types'
 const DEFAULT_WHEEL: WheelConfig = {
   range: 900, maxTorque: 3.5, masterGain: 80,
   idleSpring: 30, damper: 20, inertia: 10, friction: 5,
-  esGain: 80, esDamp: 40, fxRatio: 100, expo: 0, invert: false,
+  esGain: 80, esDamp: 40, fxRatio: 100, expo: 0, invert: false, ffbInvert: false,
 }
 
 const DEFAULT_MOTOR: MotorConfig = {

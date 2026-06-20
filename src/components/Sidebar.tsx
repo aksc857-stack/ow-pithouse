@@ -1,18 +1,7 @@
 import type { PageId } from '@/types'
+import { useNav, type NavItem } from '@/context/NavContext'
 
-interface NavItem { id: PageId; icon: string; label: string }
-
-const TOP_NAV: NavItem[] = [
-  { id: 'dashboard', icon: 'ti-layout-dashboard', label: 'Dash' },
-  { id: 'odrive',    icon: 'ti-engine',           label: 'ODrive' },
-  { id: 'ffb',       icon: 'ti-steering-wheel',   label: 'FFB' },
-  { id: 'effects',   icon: 'ti-wave-sine',        label: 'Effets' },
-  { id: 'profiles',  icon: 'ti-bookmarks',        label: 'Profils' },
-  { id: 'monitor',   icon: 'ti-activity',         label: 'Monitor' },
-  { id: 'console',   icon: 'ti-terminal-2',       label: 'Console' },
-  { id: 'dfu',       icon: 'ti-download',         label: 'Flash' },
-]
-
+// Entrées du bas — fixes, toujours visibles (Réglages héberge la config du menu).
 const BOTTOM_NAV: NavItem[] = [
   { id: 'themes',   icon: 'ti-palette',  label: 'Thème' },
   { id: 'settings', icon: 'ti-settings', label: 'Réglages' },
@@ -24,6 +13,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ page, onNavigate }: SidebarProps) {
+  const { items, isHidden } = useNav()
+
   const renderItem = (item: NavItem) => (
     <div
       key={item.id}
@@ -39,7 +30,7 @@ export function Sidebar({ page, onNavigate }: SidebarProps) {
 
   return (
     <nav className="sidebar">
-      {TOP_NAV.map(renderItem)}
+      {items.filter((it) => !isHidden(it.id)).map(renderItem)}
       <div className="sidebar__spacer" />
       {BOTTOM_NAV.map(renderItem)}
     </nav>

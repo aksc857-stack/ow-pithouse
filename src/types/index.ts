@@ -54,7 +54,8 @@ export interface WheelConfig {
   esDamp: number         // end-stop damper %
   fxRatio: number        // %
   expo: number           // %
-  invert: boolean        // HID axis position invert
+  invert: boolean        // axis.invert — inverse la position HID
+  ffbInvert: boolean     // axis.ffbinvert — inverse le couple FFB
 }
 
 export interface MotorConfig {
@@ -68,9 +69,8 @@ export interface MotorConfig {
 
 export interface EffectConfig {
   name: string
-  cmd: string
-  enabled: boolean
-  gain: number
+  path: string   // fx.spring | fx.damper | fx.friction | fx.inertia
+  gain: number   // 0..100 UI — firmware 0..255
 }
 
 export interface GameProfile {
@@ -94,6 +94,6 @@ export interface LiveData {
 }
 
 export type PageId =
-  | 'dashboard' | 'odrive' | 'ffb' | 'effects'
+  | 'dashboard' | 'odrive' | 'ffb'
   | 'profiles' | 'monitor' | 'console' | 'dfu'
   | 'themes' | 'settings'
