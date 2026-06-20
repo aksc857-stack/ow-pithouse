@@ -28,6 +28,23 @@ function createWindow() {
 
   serial = new SerialManager(win)
 
+  // ── WebUSB pour le flash DFU ────────────────────────────────────────────────
+  // Sans ces handlers, navigator.usb.requestDevice() dans le renderer ne renvoie
+  // jamais de device. On n'autorise QUE le bootloader STM32 (VID:PID 0483:DF11).
+  const STM_DFU = { vendorId: 0x0483, productId: 0xdf11 }
+  win.webContents.session.on('select-usb-device', (event, details, callback) => {
+    event.preventDefault()
+    const dev = details.deviceList.find(
+      (d) => d.vendorId === STM_DFU.vendorId && d.productId === STM_DFU.productId
+    )
+    callback(dev?.deviceId)
+  })
+  win.webContents.session.setDevicePermissionHandler((details) =>
+    details.deviceType === 'usb' &&
+    details.device.vendorId === STM_DFU.vendorId &&
+    details.device.productId === STM_DFU.productId
+  )
+
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
     win.webContents.openDevTools()

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useDevice } from '@/context/DeviceContext'
 import { useLiveApply } from '@/hooks/useLiveApply'
 import { Slider, toast } from '@/components/ui'
-import { writeWheelConfig, applyWheelField, readEffectsConfig, applyEffectGain, EFFECT_DEFS } from '@/lib/ffbConfig'
+import { writeWheelConfig, applyWheelField, readEffectsConfig, applyEffectGain, EFFECT_DEFS,
+  FILTER_DEFS, defaultFilterValues, readFiltersConfig, applyFilter, writeFiltersConfig, type FilterValues } from '@/lib/ffbConfig'
 import type { EffectConfig, WheelConfig } from '@/types'
 
 const DEFAULT_EFFECTS: EffectConfig[] = EFFECT_DEFS.map((d) => ({
@@ -102,6 +103,84 @@ export function FFB() {
           <Slider label="Spring (esgain)" value={wheelConfig.esGain} min={0} max={100} unit="%" onChange={(v) => update('esGain', v)} />
           <Slider label="Damper (esdamp)" value={wheelConfig.esDamp} min={0} max={100} unit="%" onChange={(v) => update('esDamp', v)} />
         </div>
+      </div>
+    </>
+  )
+}
+
+// ── Filters Page ────────────────────────────────────────────────────────────────
+// Filtres biquad lowpass par effet (fx.filter*) — incorporé depuis odrive-wheel.html.
+export function Filters() {
+  const { connected } = useDevice()
+  const liveApply = useLiveApply()
+  const [values, setValues] = useState<FilterValues>(defaultFilterValues)
+  const [loading, setLoading] = useState(false)
+
+  const reload = async () => {
+    if (!connected) { toast('Connectez la carte d\'abord', 'err'); return }
+    setLoading(true)
+    try {
+      setValues(await readFiltersConfig(values))
+    } catch (e) {
+      toast('Erreur lecture : ' + e, 'err')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { if (connected) reload() }, [connected])
+
+  // État UI immédiat + écriture live debouncée (RAM).
+  const setVal = (path: string, v: number) => {
+    setValues((prev) => ({ ...prev, [path]: v }))
+    if (connected) liveApply(path, () => applyFilter(path, v))
+  }
+
+  const save = async () => {
+    if (!connected) { toast('Connectez la carte d\'abord', 'err'); return }
+    try {
+      await writeFiltersConfig(values)
+      toast('Filtres sauvegardés en EEPROM')
+    } catch (e) {
+      toast('Erreur : ' + e, 'err')
+    }
+  }
+
+  return (
+    <>
+      <div className="page-head">
+        <div>
+          <div className="page-head__title">Filtres FFB</div>
+          <div className="page-head__sub">
+            {loading ? 'Lecture des filtres depuis la carte...' : 'Filtres biquad passe-bas par effet — appliqués en direct'}
+          </div>
+        </div>
+        <div className="page-head__actions">
+          <button className="btn" onClick={reload} disabled={!connected || loading}>
+            <i className="ti ti-refresh" /> Relire
+          </button>
+          <button className="btn btn--primary" onClick={save} disabled={!connected}>
+            <i className="ti ti-device-floppy" /> Sauvegarder
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid--2">
+        {FILTER_DEFS.map((d) => (
+          <div key={d.group} className="card">
+            <div className="card__head"><i className="ti ti-filter" />{d.group}</div>
+            <Slider
+              label={d.freq.name} hint={d.freq.tooltip}
+              value={values[d.freq.path]} min={1} max={500} unit=" Hz"
+              onChange={(v) => setVal(d.freq.path, v)}
+            />
+            <Slider
+              label={d.q.name} hint={d.q.tooltip}
+              value={values[d.q.path]} min={1} max={500} format={(v) => (v / 100).toFixed(2)}
+              onChange={(v) => setVal(d.q.path, v)}
+            />
+          </div>
+        ))}
       </div>
     </>
   )

@@ -148,6 +148,15 @@ input, select { font-family: inherit; }
   }
 }
 
+// ── Command picker (Console) ──────────────────────────────────────────────────
+.cmd-pick-item {
+  display: flex;
+  align-items: baseline;
+  padding: 6px 12px;
+  cursor: pointer;
+  &:hover { background: var(--bg-hover); }
+}
+
 // ── Sidebar nav ───────────────────────────────────────────────────────────────
 .sidebar {
   width: 80px;
@@ -412,6 +421,27 @@ input, select { font-family: inherit; }
     outline: none;
     &:focus { border-color: var(--accent); }
   }
+}
+
+// ── Sélecteur de profil (Dashboard) ───────────────────────────────────────────
+.dash-profile-select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 220px;
+  padding: 8px 34px 8px 12px;
+  background-color: var(--bg-sunken);
+  color: var(--text);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  // Flèche grise custom (chevron SVG)
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  &:focus { border-color: var(--accent); }
+  &:disabled { opacity: 0.5; cursor: default; }
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────

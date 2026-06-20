@@ -4,7 +4,12 @@
 //   • offb  — OpenFFBoard:    read "<path>?" → "[path?|VAL]"  write "<path>=<v>"
 // FFB wheel/effects/filters params are all `offb`. Motor/encoder/vbus are `odrv`.
 
+import { serialLog } from './serialLog'
+
 export type Protocol = 'odrv' | 'offb'
+
+/** Options d'E/S. log:false supprime l'écho console (utilisé par le polling). */
+export interface IoOpts { log?: boolean }
 
 /** Extract the value out of an OpenFFBoard reply: "[axis.range?|900]" → "900" */
 export function extractOffbValue(reply: string | null): string | null {
@@ -14,14 +19,19 @@ export function extractOffbValue(reply: string | null): string | null {
 }
 
 /** Read a property using the correct protocol. Returns null on timeout/error. */
-export async function readProp(path: string, protocol: Protocol = 'odrv'): Promise<string | null> {
+export async function readProp(path: string, protocol: Protocol = 'odrv', opts: IoOpts = {}): Promise<string | null> {
   if (!window.ow) return null
+  const log = opts.log !== false
   try {
     if (protocol === 'offb') {
+      if (log) serialLog('tx', `${path}?`)
       const reply = await window.ow.query(`${path}?`)
+      if (log && reply != null) serialLog('rx', reply)
       return extractOffbValue(reply)
     }
+    if (log) serialLog('tx', `r ${path}`)
     const reply = await window.ow.query(`r ${path}`)
+    if (log && reply != null) serialLog('rx', reply)
     // ODrive returns "invalid property" for unknown paths
     if (reply && /invalid/i.test(reply)) return null
     return reply
@@ -30,12 +40,16 @@ export async function readProp(path: string, protocol: Protocol = 'odrv'): Promi
   }
 }
 
-/** Write a property using the correct protocol. */
+/** Write a property using the correct protocol. Les écritures sont toujours
+ *  loggées (ce sont les changements de valeur que l'utilisateur veut voir). */
 export async function writeProp(path: string, value: string | number, protocol: Protocol = 'odrv'): Promise<void> {
   if (!window.ow) return
   if (protocol === 'offb') {
-    await window.ow.query(`${path}=${value}`)   // offb echoes a reply, consume it
+    serialLog('tx', `${path}=${value}`)
+    const reply = await window.ow.query(`${path}=${value}`)   // offb echoes a reply, consume it
+    if (reply != null) serialLog('rx', reply)
   } else {
+    serialLog('tx', `w ${path} ${value}`)
     await window.ow.send(`w ${path} ${value}`)
   }
 }

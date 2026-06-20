@@ -3,6 +3,7 @@ import { useTheme, ACCENT_PRESETS } from '@/context/ThemeContext'
 import { useDevice } from '@/context/DeviceContext'
 import { useNav } from '@/context/NavContext'
 import { Toggle } from '@/components/ui'
+import { Dfu } from '@/pages/Tools'
 
 // ── Themes ────────────────────────────────────────────────────────────────────
 export function Themes() {
@@ -109,8 +110,26 @@ function NavCustomizer() {
   )
 }
 
-// ── Settings ──────────────────────────────────────────────────────────────────
+// ── Settings (container à onglets : Réglages + Flash) ─────────────────────────
 export function Settings() {
+  const [tab, setTab] = useState<'settings' | 'flash'>('settings')
+  return (
+    <>
+      <div className="odrive-tabs">
+        <button className={`odrive-tab ${tab === 'settings' ? 'active' : ''}`} onClick={() => setTab('settings')}>
+          Réglages
+        </button>
+        <button className={`odrive-tab ${tab === 'flash' ? 'active' : ''}`} onClick={() => setTab('flash')}>
+          Flash
+        </button>
+      </div>
+      {tab === 'settings' ? <SettingsForm /> : <Dfu />}
+    </>
+  )
+}
+
+// ── Réglages (connexion, préférences, menu latéral) ───────────────────────────
+function SettingsForm() {
   const { ports, connected, port, connect, disconnect } = useDevice()
   const [selectedPort, setSelectedPort] = useState('')
   const [autoConnect, setAutoConnect] = useState(() => localStorage.getItem('ow_autoconnect') !== 'off')

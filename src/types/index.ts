@@ -6,6 +6,7 @@ export interface PortInfo {
   productId: string | null
   friendlyName: string | null
   pnpId: string | null
+  busDescription: string | null
 }
 
 export interface OwApi {
@@ -73,12 +74,19 @@ export interface EffectConfig {
   gain: number   // 0..100 UI — firmware 0..255
 }
 
+// Réglages capturés dans un profil : uniquement le menu FFB + le menu Filtres.
+export interface ProfileSettings {
+  wheel: WheelConfig                 // roue, effets permanents, end-stop, gains
+  effects: Record<string, number>    // fx.spring|damper|friction|inertia → gain % (0..100)
+  filters: Record<string, number>    // fx.filter*Freq / fx.filter*Q → valeur brute
+}
+
 export interface GameProfile {
   id: string
   name: string
-  exe: string
+  exe?: string
   icon: string
-  config: Partial<WheelConfig>
+  settings?: ProfileSettings
   active?: boolean
 }
 
@@ -94,6 +102,6 @@ export interface LiveData {
 }
 
 export type PageId =
-  | 'dashboard' | 'odrive' | 'ffb'
-  | 'profiles' | 'monitor' | 'console' | 'dfu'
+  | 'dashboard' | 'odrive' | 'ffb' | 'filters'
+  | 'profiles' | 'status' | 'console'
   | 'themes' | 'settings'
