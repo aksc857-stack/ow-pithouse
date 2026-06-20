@@ -6,7 +6,7 @@ import { readWheelConfig } from '@/lib/ffbConfig'
 const DEFAULT_WHEEL: WheelConfig = {
   range: 900, maxTorque: 3.5, masterGain: 80,
   idleSpring: 30, damper: 20, inertia: 10, friction: 5,
-  esGain: 80, esDamp: 40, fxRatio: 100, expo: 0, invert: false,
+  esGain: 80, esDamp: 40, fxRatio: 100, expo: 0, invert: false, ffbInvert: false,
 }
 
 interface DeviceContextValue {
@@ -160,11 +160,10 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
       setConnected(false)
       setPort(null)
     })
-    const offData = window.ow.onSerialData((line) => appendLog('rx', line))
     const offErr = window.ow.onError((msg) => appendLog('err', msg))
     refreshPorts()
     const interval = setInterval(refreshPorts, 3000)
-    return () => { offConn(); offDisc(); offData(); offErr(); clearInterval(interval) }
+    return () => { offConn(); offDisc(); offErr(); clearInterval(interval) }
   }, [appendLog, refreshPorts, reloadFromBoard])
 
   // Live polling — sequential, slow, ODrive protocol for live signals.

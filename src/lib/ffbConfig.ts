@@ -13,7 +13,39 @@
 //   fx.master         0..255  (master gain)
 
 import { readProp, writeProp, toNum } from './odrive'
-import type { WheelConfig } from '@/types'
+import type { WheelConfig, EffectConfig } from '@/types'
+
+export const EFFECT_DEFS: { name: string; path: string; defaultGain: number }[] = [
+  { name: 'Spring',   path: 'fx.spring',   defaultGain: 25  }, // firmware default 64/255 ≈ 25%
+  { name: 'Damper',   path: 'fx.damper',   defaultGain: 25  }, // firmware default 64/255 ≈ 25%
+  { name: 'Friction', path: 'fx.friction', defaultGain: 100 }, // firmware default 254/255 ≈ 100%
+  { name: 'Inertia',  path: 'fx.inertia',  defaultGain: 50  }, // firmware default 127/255 ≈ 50%
+]
+
+/** Lire les gains des 4 effets depuis la carte. */
+export async function readEffectsConfig(current: EffectConfig[]): Promise<EffectConfig[]> {
+  return Promise.all(
+    EFFECT_DEFS.map(async (def, i) => {
+      const raw = await readProp(def.path, 'offb')
+      const gain = raw != null
+        ? Math.round((toNum(raw, 0) / 255) * 100)
+        : (current[i]?.gain ?? def.defaultGain)
+      return { name: def.name, path: def.path, gain }
+    })
+  )
+}
+
+/** Écrire les gains vers la carte, puis sauvegarder en EEPROM. */
+export async function writeEffectsConfig(effects: EffectConfig[]): Promise<void> {
+  for (const e of effects) {
+    await writeProp(e.path, Math.round((e.gain / 100) * 255), 'offb')
+  }
+  if (window.ow) {
+    await window.ow.send('w axis0.requested_state 1')
+    await new Promise((r) => setTimeout(r, 300))
+    await window.ow.query('sys.save!')
+  }
+}
 
 const r255 = (raw: string | null, fbUi: number) =>
   raw == null ? fbUi : Math.round((toNum(raw, 0) / 255) * 100)
@@ -33,6 +65,7 @@ export async function readWheelConfig(current: WheelConfig): Promise<WheelConfig
   const esdamp    = await readProp('axis.esdamp', 'offb')
   const expo      = await readProp('axis.expo', 'offb')
   const invert    = await readProp('axis.invert', 'offb')
+  const ffbinvert = await readProp('axis.ffbinvert', 'offb')
 
   return {
     range:      toNum(range, current.range),
@@ -47,11 +80,12 @@ export async function readWheelConfig(current: WheelConfig): Promise<WheelConfig
     esDamp:     r255(esdamp, current.esDamp),
     expo:       toNum(expo, current.expo),
     invert:     invert != null ? (invert === '1' || invert.toLowerCase() === 'true') : current.invert,
+    ffbInvert:  ffbinvert != null ? (ffbinvert === '1' || ffbinvert.toLowerCase() === 'true') : current.ffbInvert,
   }
 }
 
-/** Write all FFB wheel params to the board, then save FFB EEPROM. */
-export async function writeWheelConfig(c: WheelConfig): Promise<void> {
+/** Écrire tous les params FFB en RAM uniquement (pas de désarmement, pas d'EEPROM). */
+export async function applyWheelConfig(c: WheelConfig): Promise<void> {
   await writeProp('axis.range', c.range, 'offb')
   await writeProp('axis.maxtorque', c.maxTorque, 'offb')
   await writeProp('axis.fxratio', (c.fxRatio / 100).toFixed(2), 'offb')
@@ -63,10 +97,45 @@ export async function writeWheelConfig(c: WheelConfig): Promise<void> {
   await writeProp('axis.esgain', w255(c.esGain), 'offb')
   await writeProp('axis.esdamp', w255(c.esDamp), 'offb')
   await writeProp('axis.invert', c.invert ? 1 : 0, 'offb')
-  // Disarm motor first (safe during flash erase), then persist FFB EEPROM.
+  await writeProp('axis.ffbinvert', c.ffbInvert ? 1 : 0, 'offb')
+}
+
+/** Écrire + désarmer moteur + persister EEPROM (bouton Appliquer). */
+export async function writeWheelConfig(c: WheelConfig): Promise<void> {
+  await applyWheelConfig(c)
   if (window.ow) {
     await window.ow.send('w axis0.requested_state 1')
     await new Promise((r) => setTimeout(r, 300))
-    await window.ow.query('sys.save!')   // OpenFFBoard EEPROM, returns "OK"
+    await window.ow.query('sys.save!')
   }
+}
+
+// Table key WheelConfig → path offb + conversion UI→firmware.
+// Sert à l'application live d'UN seul champ (pas d'EEPROM, pas de désarmement).
+const WHEEL_FIELD_MAP: Partial<Record<keyof WheelConfig, { path: string; conv: (v: never) => string | number }>> = {
+  range:      { path: 'axis.range',        conv: (v: number) => v },
+  maxTorque:  { path: 'axis.maxtorque',    conv: (v: number) => v },
+  fxRatio:    { path: 'axis.fxratio',      conv: (v: number) => (v / 100).toFixed(2) },
+  masterGain: { path: 'fx.master',         conv: (v: number) => w255(v) },
+  idleSpring: { path: 'axis.idlespring',   conv: (v: number) => w255(v) },
+  damper:     { path: 'axis.axisdamper',   conv: (v: number) => w255(v) },
+  inertia:    { path: 'axis.axisinertia',  conv: (v: number) => w255(v) },
+  friction:   { path: 'axis.axisfriction', conv: (v: number) => w255(v) },
+  esGain:     { path: 'axis.esgain',       conv: (v: number) => w255(v) },
+  esDamp:     { path: 'axis.esdamp',       conv: (v: number) => w255(v) },
+  expo:       { path: 'axis.expo',         conv: (v: number) => v },
+  invert:     { path: 'axis.invert',       conv: (v: boolean) => (v ? 1 : 0) },
+  ffbInvert:  { path: 'axis.ffbinvert',    conv: (v: boolean) => (v ? 1 : 0) },
+}
+
+/** Écrire UN seul champ de WheelConfig en RAM (application live, pas d'EEPROM). */
+export async function applyWheelField<K extends keyof WheelConfig>(key: K, value: WheelConfig[K]): Promise<void> {
+  const f = WHEEL_FIELD_MAP[key]
+  if (!f) return
+  await writeProp(f.path, (f.conv as (v: WheelConfig[K]) => string | number)(value), 'offb')
+}
+
+/** Écrire un seul gain d'effet en RAM (pas d'EEPROM). */
+export async function applyEffectGain(path: string, gain: number): Promise<void> {
+  await writeProp(path, Math.round((gain / 100) * 255), 'offb')
 }

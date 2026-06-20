@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTheme, ACCENT_PRESETS } from '@/context/ThemeContext'
 import { useDevice } from '@/context/DeviceContext'
+import { useNav } from '@/context/NavContext'
 import { Toggle } from '@/components/ui'
 
 // ── Themes ────────────────────────────────────────────────────────────────────
@@ -37,6 +38,74 @@ export function Themes() {
         </p>
       </div>
     </>
+  )
+}
+
+// ── Personnalisation du menu latéral ────────────────────────────────────────────
+function NavCustomizer() {
+  const { items, isHidden, reorder, toggleHidden, reset } = useNav()
+  const dragIndex = useRef<number | null>(null)
+  const [overIndex, setOverIndex] = useState<number | null>(null)
+
+  const onDrop = (to: number) => {
+    if (dragIndex.current !== null) reorder(dragIndex.current, to)
+    dragIndex.current = null
+    setOverIndex(null)
+  }
+
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="card__head">
+        <i className="ti ti-menu-2" />Menu latéral
+        <button className="btn btn--sm" style={{ marginLeft: 'auto' }} onClick={reset}>
+          <i className="ti ti-rotate" /> Réinitialiser
+        </button>
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '0 0 14px', lineHeight: 1.7 }}>
+        Glissez pour réordonner (ou flèches), et masquez les onglets inutilisés.
+        « Thème » et « Réglages » restent toujours visibles.
+      </p>
+
+      {items.map((item, i) => {
+        const hidden = isHidden(item.id)
+        return (
+          <div
+            key={item.id}
+            draggable
+            onDragStart={() => { dragIndex.current = i }}
+            onDragOver={(e) => { e.preventDefault(); setOverIndex(i) }}
+            onDragLeave={() => setOverIndex((cur) => (cur === i ? null : cur))}
+            onDrop={() => onDrop(i)}
+            onDragEnd={() => { dragIndex.current = null; setOverIndex(null) }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', marginBottom: 6,
+              background: 'var(--bg-sunken)',
+              border: `1px solid ${overIndex === i ? 'var(--accent)' : 'var(--border)'}`,
+              borderRadius: 'var(--r-sm)',
+              opacity: hidden ? 0.45 : 1,
+              cursor: 'grab',
+            }}
+          >
+            <i className="ti ti-grip-vertical" style={{ color: 'var(--text-faint)', cursor: 'grab' }} />
+            <i className={`ti ${item.icon}`} style={{ color: 'var(--accent)', width: 18, textAlign: 'center' }} />
+            <span style={{ flex: 1, fontSize: 13, textDecoration: hidden ? 'line-through' : 'none' }}>{item.label}</span>
+
+            <button className="btn btn--sm" title="Monter" disabled={i === 0}
+              onClick={() => reorder(i, i - 1)}>
+              <i className="ti ti-chevron-up" />
+            </button>
+            <button className="btn btn--sm" title="Descendre" disabled={i === items.length - 1}
+              onClick={() => reorder(i, i + 1)}>
+              <i className="ti ti-chevron-down" />
+            </button>
+            <button className="btn btn--sm" title={hidden ? 'Afficher' : 'Masquer'}
+              onClick={() => toggleHidden(item.id)}>
+              <i className={`ti ${hidden ? 'ti-eye-off' : 'ti-eye'}`} />
+            </button>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -120,6 +189,8 @@ export function Settings() {
           </div>
         </div>
       </div>
+
+      <NavCustomizer />
     </>
   )
 }

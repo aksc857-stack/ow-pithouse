@@ -33,17 +33,17 @@ reflects what's actually flashed, not hard-coded defaults.
 | Area | State |
 |------|-------|
 | Auto-connect by USB **VID:PID** (`1209:0D40`), independent of COM number | ✅ working |
-| **Dashboard** — wheel visual with live HID-direction rotation, angle presets (360/540/720/900/1080), FFB intensity, output torque | ✅ working |
+| **Dashboard** — wheel visual with live HID-direction rotation, angle presets (360/540/720/900/1080), live FFB intensity, output torque, **invert axis** (`axis.invert`) / **invert FFB** (`axis.ffbinvert`) | ✅ working |
 | **ODrive** tab — PSU/RBrake, Axis 0, Motor, Encoder, Controller (full schema, read-only calibration fields flagged) | ✅ values read correctly |
-| **FFB** tab — range, max torque, master gain, permanent effects, end-stop (correct OpenFFBoard paths & scales) | ✅ working |
+| **FFB** tab — wheel (range, max torque, master gain, fx ratio), **per-effect game gains** (`fx.*` — scales the game's effects), **always-on added effects** (`axis.*` — independent of the game), end-stop. Correct OpenFFBoard paths & scales, **applied live as you drag** | ✅ working |
 | Serial transport — single-flight FIFO queue + resync guard (mirrors the reference tool, avoids CDC desync) | ✅ working |
-| **Effects / Filters** tabs | 🚧 UI present, wiring to firmware in progress |
+| **Sidebar** — drag-to-reorder and hide/show tabs, persisted (Settings → *Menu latéral*) | ✅ working |
 | **Monitor** tab | 🚧 partial / values being verified |
 | **Auto-Profiler** (game detection → profile switch) | 🚧 UI mockup, detection not implemented |
 | **Console** — ODrive/OpenFFBoard ASCII | ✅ working |
 | **DFU flash** from the app | 🚧 UI present, flashing flow not finished |
 | **Overlay** (in-game telemetry window) | 🚧 experimental |
-| Save: FFB EEPROM (`sys.save!`) + ODrive NVM (`ss`) | ✅ working |
+| Saving — live edits write to RAM instantly; **Save** persists FFB EEPROM (`sys.save!`) + ODrive NVM (`ss`) | ✅ working |
 
 Anything marked 🚧 may show placeholder or inconsistent values for now.
 
@@ -56,6 +56,7 @@ vite-plugin-electron    — Electron integration inside Vite
 Electron 31             — cross-platform desktop shell
 Node SerialPort 12      — serial communication with the board
 SCSS                    — styling (dark FFBeast-style theme)
+Tabler Icons (webfont)  — bundled locally, no CDN/internet needed
 ```
 
 ## Getting started
@@ -106,24 +107,29 @@ src/
   context/
     DeviceContext.tsx  # Connection state, auto-connect, live polling, auto-read
     ThemeContext.tsx   # Accent colour (persisted)
+    NavContext.tsx     # Sidebar order + hidden tabs (persisted, reorderable)
+
+  hooks/
+    useLiveApply.ts    # Per-field debounced live writes (sliders -> board)
+    useConfig.ts       # Persisted wheel/motor config helpers
 
   lib/
     odrive.ts          # Dual-protocol read/write (odrv + offb), value parsing
-    ffbConfig.ts       # FFB wheel read/write with correct paths & scales
+    ffbConfig.ts       # FFB wheel/effects read/write, live-apply, correct scales
     odriveSchema.ts    # Full ODrive field schema (5 sections, enums, RO flags)
 
   components/
-    Titlebar.tsx       # Custom window title bar
-    Sidebar.tsx        # Icon navigation rail
+    Titlebar.tsx       # Custom window title bar (logo + device status)
+    Sidebar.tsx        # Icon navigation rail (consumes NavContext)
     SchemaSection.tsx  # Generic ODrive field renderer (read/write/dirty-track)
     ui.tsx             # Slider, Toggle, TorqueDial, Sparkline, Toast
 
   pages/
-    Dashboard.tsx      # Wheel visual + angle presets + base controls
+    Dashboard.tsx      # Wheel visual + angle presets + base controls + invert
     Odrive.tsx         # PSU/RBrake - Axis 0 - Motor - Encoder - Controller tabs
-    Config.tsx         # FFB + Effects
+    Config.tsx         # FFB tab (wheel, per-effect gains, added effects, end-stop)
     Tools.tsx          # Profiles - Monitor - Console - DFU
-    Preferences.tsx    # Themes - Settings (connection, auto-connect)
+    Preferences.tsx    # Themes - Settings (connection, auto-connect, sidebar)
     Overlay.tsx        # In-game telemetry overlay
 
   types/index.ts       # Global types + window.ow API surface
@@ -155,11 +161,28 @@ desyncing (which otherwise causes replies to land on the wrong request).
 The board is found by its USB **VID:PID `1209:0D40`**, so auto-connect works on
 any machine regardless of which COM port Windows assigns.
 
+## Editing, saving & customizing
+
+- **Live editing.** Dragging any FFB slider writes the changed parameter to the
+  board immediately (RAM only), debounced per-field so the single-flight serial
+  queue isn't flooded. No "Apply" step — you feel changes as you make them.
+- **Saving.** The **Save** button persists to non-volatile memory: FFB params to
+  the OpenFFBoard EEPROM (`sys.save!`, after disarming the motor) and ODrive
+  fields to NVM (`ss`). Live edits survive until you reboot the board; Save makes
+  them permanent.
+- **Sidebar.** In **Settings → *Menu latéral*** you can drag to reorder tabs (or
+  use the up/down arrows) and hide the ones you don't use. The layout is stored
+  in `localStorage`; *Thème* and *Réglages* are always visible so you can never
+  lock yourself out.
+
 ## Adding a page
 
 1. Create the component in `src/pages/`.
 2. Register it in `PAGES` (`src/App.tsx`).
-3. Add a nav entry in `TOP_NAV` / `BOTTOM_NAV` (`src/components/Sidebar.tsx`).
+3. Add a nav entry to `NAV_ITEMS` (`src/context/NavContext.tsx`) — it becomes
+   reorderable/hideable automatically; the persisted order merges new ids on
+   upgrade. (Fixed bottom entries like *Thème* / *Réglages* live in
+   `BOTTOM_NAV` in `src/components/Sidebar.tsx`.)
 4. Add its id to the `PageId` type (`src/types/index.ts`).
 
 ## Credits

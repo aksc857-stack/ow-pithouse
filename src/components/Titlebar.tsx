@@ -1,4 +1,5 @@
 import { useDevice } from '@/context/DeviceContext'
+import logo from '@/assets/logo.png'
 
 export function Titlebar() {
   const { connected, port } = useDevice()
@@ -6,8 +7,8 @@ export function Titlebar() {
   return (
     <div className="titlebar">
       <div className="titlebar__logo">
-        <div className="titlebar__logo-mark">OW</div>
-        Odrive Wheel <span className="titlebar__logo-sub">Pit House</span>
+        <img className="titlebar__logo-mark" src={logo} alt="OW Pithouse" />
+        <span><span className="titlebar__logo-ow">OW</span><span className="titlebar__logo-sub">-Pithouse</span></span>
       </div>
 
       <div className="titlebar__device">
