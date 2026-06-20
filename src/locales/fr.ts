@@ -1,0 +1,111 @@
+// Dictionnaire FR — source de référence (toutes les clés existent ici).
+// en/pt sont des Partial : toute clé manquante retombe sur le FR.
+export const fr = {
+  // Commun
+  'common.connect_first': "Connectez la carte d'abord",
+  'common.reload': 'Relire',
+  'common.save': 'Sauvegarder',
+  'common.cancel': 'Annuler',
+  'common.error': 'Erreur',
+
+  // Navigation
+  'nav.dashboard': 'Dash',
+  'nav.odrive': 'ODrive',
+  'nav.ffb': 'FFB',
+  'nav.filters': 'Filtres',
+  'nav.profiles': 'Profils',
+  'nav.status': 'Status',
+  'nav.console': 'Console',
+  'nav.themes': 'Thème',
+  'nav.settings': 'Réglages',
+
+  // Titlebar
+  'title.no_device': 'Aucun périphérique',
+  'title.connected': 'Connecté',
+  'title.disconnected': 'Déconnecté',
+
+  // Dashboard
+  'dash.pick_profile': 'Choisir un profil…',
+  'dash.no_profile': 'Aucun profil enregistré',
+  'dash.wheel_name': 'Odrive Wheel',
+  'dash.no_wheel': 'Aucun volant',
+  'dash.max_angle': 'Angle de rotation max',
+  'dash.invert_axis': "Inverser l'axe",
+  'dash.invert_ffb': 'Inverser FFB',
+  'dash.center': 'Center',
+  'dash.base_name': 'Odrive Wheel Base',
+  'dash.ffb_intensity': 'Intensité du Force Feedback',
+  'dash.output_torque': 'Couple de sortie',
+  'dash.work_mode': 'Work Mode',
+  'dash.device_id': 'Device ID',
+  'dash.centered': 'Position centrée',
+  'dash.axis_inverted': 'Axe HID inversé',
+  'dash.axis_normal': 'Axe HID normal',
+  'dash.ffb_inverted': 'FFB inversé',
+  'dash.ffb_normal': 'FFB normal',
+  'dash.profile_applied': 'Profil « {name} » appliqué',
+
+  // FFB
+  'ffb.title': 'Force Feedback',
+  'ffb.sub_reading': 'Lecture des réglages de la carte...',
+  'ffb.sub': 'Roue + gain des effets du jeu — appliqués en direct',
+  'ffb.card_wheel': 'Roue',
+  'ffb.card_game_gains': 'Gain des effets du jeu',
+  'ffb.card_game_gains_desc': "Ajuste l'intensité des effets envoyés par le jeu (multiplicateur).",
+  'ffb.card_added': 'Effets ajoutés en permanence',
+  'ffb.card_added_desc': "Toujours actifs, s'ajoutent au FFB du jeu (indépendants du jeu).",
+  'ffb.card_endstop': 'End-stop',
+  'ffb.range': 'Rotation max',
+  'ffb.max_torque': 'Couple max',
+  'ffb.master_gain': 'Gain master',
+  'ffb.fx_ratio': 'Fx ratio',
+  'ffb.centering': 'Centrage (spring)',
+  'ffb.damper': 'Damper',
+  'ffb.inertia': 'Inertia',
+  'ffb.friction': 'Friction',
+  'ffb.es_spring': 'Spring (esgain)',
+  'ffb.es_damper': 'Damper (esdamp)',
+  'ffb.saved': 'Réglages FFB sauvegardés en EEPROM',
+
+  // Filtres
+  'filters.title': 'Filtres FFB',
+  'filters.sub_reading': 'Lecture des filtres depuis la carte...',
+  'filters.sub': 'Filtres biquad passe-bas par effet — appliqués en direct',
+  'filters.freq': 'Fréquence',
+  'filters.q': 'Q',
+  'filters.saved': 'Filtres sauvegardés en EEPROM',
+
+  // Réglages
+  'set.tab_settings': 'Réglages',
+  'set.tab_flash': 'Flash',
+  'set.title': 'Réglages',
+  'set.sub': 'Connexion et préférences',
+  'set.conn': 'Connexion série',
+  'set.autoconn': 'Connexion automatique',
+  'set.autoconn_desc': 'Détecte « ODrive-Wheel CDC » quel que soit le port COM',
+  'set.com_port': 'Port COM',
+  'set.com_port_manual': '(manuel — auto activé)',
+  'set.choose_port': 'Choisir un port...',
+  'set.connect': 'Connecter',
+  'set.disconnect': 'Déconnecter',
+  'set.prefs': 'Préférences',
+  'set.startup': 'Lancer au démarrage Windows',
+  'set.autoprofile': 'Auto-switch profils (détection jeux)',
+  'set.tray': 'Minimiser dans la zone de notification',
+  'set.language': 'Langue',
+  'set.menu': 'Menu latéral',
+  'set.menu_desc': "Glissez pour réordonner (ou flèches), et masquez les onglets inutilisés. « Thème » et « Réglages » restent toujours visibles.",
+  'set.reset': 'Réinitialiser',
+  'set.menu_up': 'Monter',
+  'set.menu_down': 'Descendre',
+  'set.menu_show': 'Afficher',
+  'set.menu_hide': 'Masquer',
+
+  // Thème
+  'theme.title': 'Thème',
+  'theme.sub': "Personnalisez la couleur d'accent",
+  'theme.accent': "Couleur d'accent",
+  'theme.accent_desc': "L'accent s'applique aux boutons, jauges, sliders et indicateurs actifs.",
+} as const
+
+export type TKey = keyof typeof fr

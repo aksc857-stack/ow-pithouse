@@ -1,8 +1,10 @@
 import { useDevice } from '@/context/DeviceContext'
+import { useI18n } from '@/context/I18nContext'
 import logo from '@/assets/logo.png'
 
 export function Titlebar() {
   const { connected, port } = useDevice()
+  const { t } = useI18n()
 
   return (
     <div className="titlebar">
@@ -15,10 +17,10 @@ export function Titlebar() {
         <div className={`titlebar__device-dot ${connected ? 'on' : ''}`} />
         <div>
           <div className="titlebar__device-name">
-            {connected ? 'MKS XDrive Mini' : 'Aucun périphérique'}
+            {connected ? 'MKS XDrive Mini' : t('title.no_device')}
           </div>
           <div className="titlebar__device-sub">
-            {connected ? `Connecté · ${port} · FW v1.0.0` : 'Déconnecté'}
+            {connected ? `${t('title.connected')} · ${port} · FW v1.0.0` : t('title.disconnected')}
           </div>
         </div>
       </div>
