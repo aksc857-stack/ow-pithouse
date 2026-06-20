@@ -33,19 +33,21 @@ reflects what's actually flashed, not hard-coded defaults.
 | Area | State |
 |------|-------|
 | Auto-connect by USB **VID:PID** (`1209:0D40`), independent of COM number | ✅ working |
-| **Dashboard** — wheel visual with live HID-direction rotation, angle presets (360/540/720/900/1080), live FFB intensity, output torque, **invert axis** (`axis.invert`) / **invert FFB** (`axis.ffbinvert`) | ✅ working |
+| **Dashboard** — wheel visual with live HID-direction rotation, angle presets, live FFB intensity, output torque, **invert axis/FFB**, **profile dropdown** (apply a saved profile) | ✅ working |
 | **ODrive** tab — PSU/RBrake, Axis 0, Motor, Encoder, Controller (full schema, read-only calibration fields flagged) | ✅ values read correctly |
-| **FFB** tab — wheel (range, max torque, master gain, fx ratio), **per-effect game gains** (`fx.*` — scales the game's effects), **always-on added effects** (`axis.*` — independent of the game), end-stop. Correct OpenFFBoard paths & scales, **applied live as you drag** | ✅ working |
+| **FFB** tab — wheel (range, max torque, master gain, fx ratio), **per-effect game gains** (`fx.*`), **always-on added effects** (`axis.*`), end-stop. Correct paths & scales, **applied live as you drag** | ✅ working |
+| **Filters** tab — per-effect biquad low-pass (`fx.filter*` freq + Q), tooltips, live-applied | ✅ working |
+| **Status** tab — decoded error registers (odrv/axis/motor/encoder/controller) + state-machine & NVM actions | ✅ working |
+| **Profiles** — capture the FFB + Filters config into a named profile, apply it back, rename, delete | ✅ working |
+| **Console** — ODrive/OpenFFBoard ASCII, logs writes + on-demand reads, *Available commands* picker, Clear | ✅ working |
+| **DFU flash** — WebUSB DfuSe (reboot DFU → detect bootloader → pick .bin → flash), preserves FFB EEPROM (S1/S2) | ✅ implemented (not tested on hardware) |
 | Serial transport — single-flight FIFO queue + resync guard (mirrors the reference tool, avoids CDC desync) | ✅ working |
 | **Sidebar** — drag-to-reorder and hide/show tabs, persisted (Settings → *Menu latéral*) | ✅ working |
-| **Monitor** tab | 🚧 partial / values being verified |
-| **Auto-Profiler** (game detection → profile switch) | 🚧 UI mockup, detection not implemented |
-| **Console** — ODrive/OpenFFBoard ASCII | ✅ working |
-| **DFU flash** from the app | 🚧 UI present, flashing flow not finished |
 | **Overlay** (in-game telemetry window) | 🚧 experimental |
 | Saving — live edits write to RAM instantly; **Save** persists FFB EEPROM (`sys.save!`) + ODrive NVM (`ss`) | ✅ working |
 
-Anything marked 🚧 may show placeholder or inconsistent values for now.
+Anything marked 🚧 may show placeholder or inconsistent values for now. *Auto profile
+switching by game detection is not implemented* — profiles are applied manually.
 
 ## Tech stack
 
@@ -84,19 +86,26 @@ npm run rebuild
 ### Build a distributable
 
 ```bash
-npm run build:win      # Windows .exe (NSIS installer + portable)
+npm run build:win      # Windows .exe (NSIS installer + portable) -> release/
 npm run build:mac      # macOS .dmg
 npm run build:linux    # Linux .AppImage + .deb
 ```
 
+`build:win` runs `tsc` (strict type-check) → `vite build` → `electron-builder`.
+Output lands in `release/`.
+
 On Windows, native module compilation needs the **Desktop development with C++**
 workload (Visual Studio Build Tools) for the `npm run rebuild` step.
+
+The app icon is `public/icon.ico`. To regenerate it from `src/assets/logo.png`
+(e.g. after changing the logo), run `node scripts/make-icon.cjs` — it emits a
+multi-resolution (256/48/32/16) ICO via the `jimp` + `png-to-ico` dev deps.
 
 ## Project structure
 
 ```
 electron/
-  main.ts            # Main process: windows, IPC, overlay
+  main.ts            # Main process: windows, IPC, overlay, WebUSB handler (DFU 0483:DF11)
   preload.ts         # Typed bridge (contextBridge -> window.ow)
   serial.ts          # SerialManager: FIFO queue, resync guard, connect/query/send
 
@@ -105,7 +114,7 @@ src/
   App.tsx            # Shell + page routing
 
   context/
-    DeviceContext.tsx  # Connection state, auto-connect, live polling, auto-read
+    DeviceContext.tsx  # Connection state, auto-connect, live polling, auto-read, console log
     ThemeContext.tsx   # Accent colour (persisted)
     NavContext.tsx     # Sidebar order + hidden tabs (persisted, reorderable)
 
@@ -115,25 +124,31 @@ src/
 
   lib/
     odrive.ts          # Dual-protocol read/write (odrv + offb), value parsing
-    ffbConfig.ts       # FFB wheel/effects read/write, live-apply, correct scales
+    ffbConfig.ts       # FFB wheel/effects/filters read/write, live-apply, profile apply
     odriveSchema.ts    # Full ODrive field schema (5 sections, enums, RO flags)
+    odriveErrors.ts    # Error-register bit decoders (Status tab)
+    serialLog.ts       # Serial log bus -> Console (writes + on-demand reads)
+    commandList.ts     # "Available commands" list for the Console picker
+    dfu.ts             # DfuSe firmware flash over WebUSB (preserves FFB EEPROM)
 
   components/
     Titlebar.tsx       # Custom window title bar (logo + device status)
     Sidebar.tsx        # Icon navigation rail (consumes NavContext)
     SchemaSection.tsx  # Generic ODrive field renderer (read/write/dirty-track)
-    ui.tsx             # Slider, Toggle, TorqueDial, Sparkline, Toast
+    ui.tsx             # Slider (with hint tooltip), Toggle, TorqueDial, Sparkline, Toast
 
   pages/
-    Dashboard.tsx      # Wheel visual + angle presets + base controls + invert
+    Dashboard.tsx      # Wheel visual + angle presets + invert + profile dropdown
     Odrive.tsx         # PSU/RBrake - Axis 0 - Motor - Encoder - Controller tabs
-    Config.tsx         # FFB tab (wheel, per-effect gains, added effects, end-stop)
-    Tools.tsx          # Profiles - Monitor - Console - DFU
-    Preferences.tsx    # Themes - Settings (connection, auto-connect, sidebar)
+    Config.tsx         # FFB tab (wheel, gains, added effects, end-stop) + Filters tab
+    Tools.tsx          # Profiles - Status - Console (+ DFU component, hosted in Settings)
+    Preferences.tsx    # Themes - Settings (connection, sidebar) with Réglages/Flash tabs
     Overlay.tsx        # In-game telemetry overlay
 
   types/index.ts       # Global types + window.ow API surface
   styles/global.scss   # Theme + component styles
+
+scripts/make-icon.cjs  # Regenerates public/icon.ico from src/assets/logo.png
 ```
 
 ## How device communication works

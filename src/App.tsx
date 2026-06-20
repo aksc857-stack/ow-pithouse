@@ -3,9 +3,9 @@ import { Titlebar } from '@/components/Titlebar'
 import { Sidebar } from '@/components/Sidebar'
 import { ToastContainer } from '@/components/ui'
 import { Dashboard } from '@/pages/Dashboard'
-import { FFB } from '@/pages/Config'
+import { FFB, Filters } from '@/pages/Config'
 import { Odrive } from '@/pages/Odrive'
-import { Profiles, Monitor, Console, Dfu } from '@/pages/Tools'
+import { Profiles, Status, Console } from '@/pages/Tools'
 import { Themes, Settings } from '@/pages/Preferences'
 import type { PageId } from '@/types'
 
@@ -13,10 +13,10 @@ const PAGES: Record<PageId, () => JSX.Element> = {
   dashboard: Dashboard,
   odrive: Odrive,
   ffb: FFB,
+  filters: Filters,
   profiles: Profiles,
-  monitor: Monitor,
+  status: Status,
   console: Console,
-  dfu: Dfu,
   themes: Themes,
   settings: Settings,
 }

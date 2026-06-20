@@ -13,7 +13,7 @@
 //   fx.master         0..255  (master gain)
 
 import { readProp, writeProp, toNum } from './odrive'
-import type { WheelConfig, EffectConfig } from '@/types'
+import type { WheelConfig, EffectConfig, ProfileSettings } from '@/types'
 
 export const EFFECT_DEFS: { name: string; path: string; defaultGain: number }[] = [
   { name: 'Spring',   path: 'fx.spring',   defaultGain: 25  }, // firmware default 64/255 ≈ 25%
@@ -138,4 +138,79 @@ export async function applyWheelField<K extends keyof WheelConfig>(key: K, value
 /** Écrire un seul gain d'effet en RAM (pas d'EEPROM). */
 export async function applyEffectGain(path: string, gain: number): Promise<void> {
   await writeProp(path, Math.round((gain / 100) * 255), 'offb')
+}
+
+// ── Filtres FFB (biquad lowpass par effet) ────────────────────────────────────
+// fx.filter*Freq : coupure en Hz (1..500). fx.filter*Q : facteur Q ×0.01 (1..500).
+// Tooltips repris fidèlement de la version odrive-wheel.html (traduits FR).
+export interface FilterParam { name: string; path: string; default: number; tooltip: string }
+export interface FilterDef { group: string; freq: FilterParam; q: FilterParam }
+
+export const FILTER_DEFS: FilterDef[] = [
+  {
+    group: 'Constant Force',
+    freq: { name: 'Fréquence', path: 'fx.filterCfFreq', default: 500, tooltip: 'Coupure du filtre passe-bas (biquad) du Constant Force, en Hz. 1–500. Défaut 500 (laisse quasiment tout passer).' },
+    q:    { name: 'Q',         path: 'fx.filterCfQ',    default: 70,  tooltip: 'Facteur Q du biquad CF (×0.01). Défaut 70 ≈ Butterworth.' },
+  },
+  {
+    group: 'Friction',
+    freq: { name: 'Fréquence', path: 'fx.filterFrFreq', default: 50, tooltip: 'Coupure du filtre Friction. Défaut 50.' },
+    q:    { name: 'Q',         path: 'fx.filterFrQ',    default: 20, tooltip: 'Q du filtre Friction. Défaut 20.' },
+  },
+  {
+    group: 'Damper',
+    freq: { name: 'Fréquence', path: 'fx.filterDaFreq', default: 30, tooltip: 'Coupure du filtre Damper. Défaut 30.' },
+    q:    { name: 'Q',         path: 'fx.filterDaQ',    default: 40, tooltip: 'Q du filtre Damper. Défaut 40.' },
+  },
+  {
+    group: 'Inertia',
+    freq: { name: 'Fréquence', path: 'fx.filterInFreq', default: 15, tooltip: 'Coupure du filtre Inertia. Défaut 15 (agressif, le signal d\'accélération est bruité).' },
+    q:    { name: 'Q',         path: 'fx.filterInQ',    default: 20, tooltip: 'Q du filtre Inertia. Défaut 20.' },
+  },
+]
+
+export type FilterValues = Record<string, number>
+
+/** Valeurs par défaut firmware (avant lecture de la carte). */
+export function defaultFilterValues(): FilterValues {
+  const v: FilterValues = {}
+  for (const d of FILTER_DEFS) { v[d.freq.path] = d.freq.default; v[d.q.path] = d.q.default }
+  return v
+}
+
+/** Lire tous les filtres depuis la carte. */
+export async function readFiltersConfig(current: FilterValues): Promise<FilterValues> {
+  const out: FilterValues = { ...current }
+  for (const d of FILTER_DEFS) {
+    for (const p of [d.freq, d.q]) {
+      const raw = await readProp(p.path, 'offb')
+      out[p.path] = raw != null ? toNum(raw, current[p.path] ?? p.default) : (current[p.path] ?? p.default)
+    }
+  }
+  return out
+}
+
+/** Écrire un seul filtre en RAM (application live, pas d'EEPROM). */
+export async function applyFilter(path: string, value: number): Promise<void> {
+  await writeProp(path, Math.round(value), 'offb')
+}
+
+/** Appliquer un profil (roue + gains effets + filtres) sur la carte, en RAM. */
+export async function applyProfileSettings(s: ProfileSettings): Promise<void> {
+  await applyWheelConfig(s.wheel)
+  for (const [path, gain] of Object.entries(s.effects)) await applyEffectGain(path, gain)
+  for (const [path, val] of Object.entries(s.filters)) await applyFilter(path, val)
+}
+
+/** Écrire tous les filtres + désarmer + persister EEPROM (bouton Sauvegarder). */
+export async function writeFiltersConfig(values: FilterValues): Promise<void> {
+  for (const d of FILTER_DEFS) {
+    await applyFilter(d.freq.path, values[d.freq.path])
+    await applyFilter(d.q.path, values[d.q.path])
+  }
+  if (window.ow) {
+    await window.ow.send('w axis0.requested_state 1')
+    await new Promise((r) => setTimeout(r, 300))
+    await window.ow.query('sys.save!')
+  }
 }

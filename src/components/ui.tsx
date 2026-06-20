@@ -10,14 +10,18 @@ interface SliderProps {
   unit?: string
   format?: (v: number) => string
   onChange: (v: number) => void
+  hint?: string   // tooltip natif au survol (icône ?)
 }
 
-export function Slider({ label, value, min, max, step = 1, unit = '', format, onChange }: SliderProps) {
+export function Slider({ label, value, min, max, step = 1, unit = '', format, onChange, hint }: SliderProps) {
   const display = format ? format(value) : `${value}${unit}`
   return (
     <div className="slider">
       <div className="slider__head">
-        <span className="slider__name">{label}</span>
+        <span className="slider__name">
+          {label}
+          {hint && <i className="ti ti-help-circle" title={hint} style={{ marginLeft: 6, color: 'var(--text-faint)', cursor: 'help' }} />}
+        </span>
         <span className="slider__val">{display}</span>
       </div>
       <input

@@ -3,7 +3,8 @@ import { useDevice } from '@/context/DeviceContext'
 import { useLiveApply } from '@/hooks/useLiveApply'
 import { Toggle, toast } from '@/components/ui'
 import { writeProp } from '@/lib/odrive'
-import { applyWheelField } from '@/lib/ffbConfig'
+import { applyWheelField, applyProfileSettings } from '@/lib/ffbConfig'
+import type { GameProfile } from '@/types'
 import wheelImg from '@/assets/wheel.png'
 
 const ANGLE_PRESETS = [360, 540, 720, 900, 1080]
@@ -12,6 +13,26 @@ export function Dashboard() {
   const { live, wheelConfig, setWheelConfig, connected, port } = useDevice()
   const [workMode, setWorkMode] = useState(true)
   const liveApply = useLiveApply()
+
+  // Profils enregistrés (capturés dans le menu Profils).
+  const [profiles] = useState<GameProfile[]>(() => {
+    try { return JSON.parse(localStorage.getItem('ow_profiles') || '[]') } catch { return [] }
+  })
+  const [profileId, setProfileId] = useState(() => profiles.find((p) => p.active)?.id || '')
+
+  const applyProfile = async (id: string) => {
+    setProfileId(id)
+    const p = profiles.find((x) => x.id === id)
+    if (!p || !p.settings) return
+    if (!connected) { toast('Connectez la carte d\'abord', 'err'); return }
+    try {
+      await applyProfileSettings(p.settings)
+      setWheelConfig(p.settings.wheel)
+      toast(`Profil "${p.name}" appliqué`)
+    } catch (e) {
+      toast('Erreur : ' + e, 'err')
+    }
+  }
 
   const angle = wheelConfig.range
   // Curseur angle : état UI immédiat + écriture live debouncée.
@@ -64,12 +85,14 @@ export function Dashboard() {
 
   return (
     <>
-      {/* Top quick bar */}
-      <div className="dash-topbar">
-        <div className="dash-pill"><i className="ti ti-user" /> Race</div>
-        <div className="dash-pill"><i className="ti ti-bolt" /> {ffbIntensity}%</div>
-        <div className="dash-pill"><i className="ti ti-rotate-clockwise" /> {angle}°</div>
-        <div className="dash-pill"><i className="ti ti-disc" /> {wheelConfig.fxRatio}%</div>
+      {/* Sélecteur de profil */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 18 }}>
+        <select className="dash-profile-select" value={profileId} onChange={(e) => applyProfile(e.target.value)} disabled={!connected || profiles.length === 0}>
+          <option value="">{profiles.length ? 'Choisir un profil…' : 'Aucun profil enregistré'}</option>
+          {profiles.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
       </div>
 
       <div className="grid grid--2" style={{ alignItems: 'start' }}>

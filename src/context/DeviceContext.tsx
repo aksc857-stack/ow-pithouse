@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import type { PortInfo, LiveData, WheelConfig } from '@/types'
 import { readProp, toNum } from '@/lib/odrive'
+import { setSerialLogger } from '@/lib/serialLog'
 import { readWheelConfig } from '@/lib/ffbConfig'
 
 const DEFAULT_WHEEL: WheelConfig = {
@@ -24,6 +25,7 @@ interface DeviceContextValue {
   sendCommand: (cmd: string) => Promise<string>
   reloadFromBoard: () => Promise<void>
   appendLog: (type: 'tx' | 'rx' | 'info' | 'err', text: string) => void
+  clearLog: () => void
 }
 
 const DeviceContext = createContext<DeviceContextValue | null>(null)
@@ -48,6 +50,8 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   const appendLog = useCallback((type: 'tx' | 'rx' | 'info' | 'err', text: string) => {
     setLog((prev) => [...prev.slice(-200), { type, text, ts: Date.now() }])
   }, [])
+
+  const clearLog = useCallback(() => setLog([]), [])
 
   // Identify the ODrive-Wheel board among the available ports.
   // Primary: friendlyName/manufacturer contains "ODrive-Wheel" (the CDC name).
@@ -161,9 +165,12 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
       setPort(null)
     })
     const offErr = window.ow.onError((msg) => appendLog('err', msg))
+    // La Console affiche les écritures + lectures à la demande émises par
+    // readProp/writeProp (le polling de fond passe log:false, voir plus bas).
+    setSerialLogger((type, text) => appendLog(type, text))
     refreshPorts()
     const interval = setInterval(refreshPorts, 3000)
-    return () => { offConn(); offDisc(); offErr(); clearInterval(interval) }
+    return () => { offConn(); offDisc(); offErr(); setSerialLogger(null); clearInterval(interval) }
   }, [appendLog, refreshPorts, reloadFromBoard])
 
   // Live polling — sequential, slow, ODrive protocol for live signals.
@@ -174,10 +181,11 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
     const poll = async () => {
       if (cancelled) return
       if (connectedRef.current && !reading && window.ow) {
-        const vb = await readProp('vbus_voltage', 'odrv')
-        const iq = await readProp('axis0.motor.current_control.Iq_measured', 'odrv')
-        const pos = await readProp('axis0.encoder.pos_estimate', 'odrv')
-        const vel = await readProp('axis0.encoder.vel_estimate', 'odrv')
+        // Polling de fond : log:false pour ne pas inonder la Console.
+        const vb = await readProp('vbus_voltage', 'odrv', { log: false })
+        const iq = await readProp('axis0.motor.current_control.Iq_measured', 'odrv', { log: false })
+        const pos = await readProp('axis0.encoder.pos_estimate', 'odrv', { log: false })
+        const vel = await readProp('axis0.encoder.vel_estimate', 'odrv', { log: false })
         if (!cancelled) {
           const iqNum = toNum(iq, 0)
           setLive({
@@ -212,7 +220,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   return (
     <DeviceContext.Provider value={{
       connected, port, ports, live, reading, wheelConfig, setWheelConfig, log,
-      refreshPorts, connect, disconnect, sendCommand, reloadFromBoard, appendLog,
+      refreshPorts, connect, disconnect, sendCommand, reloadFromBoard, appendLog, clearLog,
     }}>
       {children}
     </DeviceContext.Provider>

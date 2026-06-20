@@ -11,11 +11,11 @@ export function Overlay() {
       background: 'rgba(8,10,13,0.82)', color: 'var(--text)',
       fontFamily: 'var(--mono)', fontSize: 12, height: '100vh',
       borderRadius: 10, border: `1px solid ${accent}66`,
-      padding: '10px 14px', WebkitAppRegion: 'drag' as never, userSelect: 'none',
+      padding: '10px 14px', WebkitAppRegion: 'drag', userSelect: 'none',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <span style={{ color: accent, fontWeight: 700, fontSize: 10, letterSpacing: 0.5 }}>OW LIVE</span>
-        <span style={{ cursor: 'pointer', color: 'var(--text-faint)', WebkitAppRegion: 'no-drag' as never }} onClick={() => window.ow?.closeOverlay()}>✕</span>
+        <span style={{ cursor: 'pointer', color: 'var(--text-faint)', WebkitAppRegion: 'no-drag' }} onClick={() => window.ow?.closeOverlay()}>✕</span>
       </div>
       <Row label="Torque" value={`${Math.abs(live.torque).toFixed(2)} Nm`} color="var(--red)" />
       <div style={{ height: 3, background: '#1e2230', borderRadius: 2, margin: '4px 0', overflow: 'hidden' }}>

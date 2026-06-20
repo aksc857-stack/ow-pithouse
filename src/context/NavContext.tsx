@@ -9,11 +9,11 @@ export interface NavItem { id: PageId; icon: string; label: string }
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', icon: 'ti-layout-dashboard', label: 'Dash' },
   { id: 'ffb',       icon: 'ti-steering-wheel',   label: 'FFB' },
+  { id: 'filters',   icon: 'ti-filter',           label: 'Filtres' },
   { id: 'odrive',    icon: 'ti-engine',           label: 'ODrive' },
   { id: 'profiles',  icon: 'ti-bookmarks',        label: 'Profils' },
-  { id: 'monitor',   icon: 'ti-activity',         label: 'Monitor' },
+  { id: 'status',    icon: 'ti-activity',         label: 'Status' },
   { id: 'console',   icon: 'ti-terminal-2',       label: 'Console' },
-  { id: 'dfu',       icon: 'ti-download',         label: 'Flash' },
 ]
 
 const DEFAULT_ORDER = NAV_ITEMS.map((i) => i.id)
@@ -21,13 +21,25 @@ const ORDER_KEY = 'ow_nav_order'
 const HIDDEN_KEY = 'ow_nav_hidden'
 
 /** Fusionne l'ordre stocké avec la liste canonique : retire les ids obsolètes,
- *  ajoute en fin les pages nouvellement introduites par une mise à jour. */
+ *  et insère les pages nouvellement introduites à LEUR position canonique
+ *  (juste après leur voisin de gauche par défaut), pas en bout de liste. */
 function loadOrder(): PageId[] {
   let stored: PageId[] = []
   try { stored = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]') } catch { stored = [] }
-  const valid = stored.filter((id) => DEFAULT_ORDER.includes(id))
-  const missing = DEFAULT_ORDER.filter((id) => !valid.includes(id))
-  return [...valid, ...missing]
+  const result = stored.filter((id) => DEFAULT_ORDER.includes(id))
+
+  for (const id of DEFAULT_ORDER) {
+    if (result.includes(id)) continue
+    // Insère après le voisin de gauche (dans l'ordre par défaut) déjà présent.
+    const defIdx = DEFAULT_ORDER.indexOf(id)
+    let insertAt = result.length
+    for (let i = defIdx - 1; i >= 0; i--) {
+      const pos = result.indexOf(DEFAULT_ORDER[i])
+      if (pos >= 0) { insertAt = pos + 1; break }
+    }
+    result.splice(insertAt, 0, id)
+  }
+  return result
 }
 
 function loadHidden(): PageId[] {
