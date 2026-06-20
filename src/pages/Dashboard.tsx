@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useDevice } from '@/context/DeviceContext'
 import { useLiveApply } from '@/hooks/useLiveApply'
+import { useI18n } from '@/context/I18nContext'
 import { Toggle, toast } from '@/components/ui'
 import { writeProp } from '@/lib/odrive'
 import { applyWheelField, applyProfileSettings } from '@/lib/ffbConfig'
@@ -11,6 +12,7 @@ const ANGLE_PRESETS = [360, 540, 720, 900, 1080]
 
 export function Dashboard() {
   const { live, wheelConfig, setWheelConfig, connected, port } = useDevice()
+  const { t } = useI18n()
   const [workMode, setWorkMode] = useState(true)
   const liveApply = useLiveApply()
 
@@ -24,13 +26,13 @@ export function Dashboard() {
     setProfileId(id)
     const p = profiles.find((x) => x.id === id)
     if (!p || !p.settings) return
-    if (!connected) { toast('Connectez la carte d\'abord', 'err'); return }
+    if (!connected) { toast(t('common.connect_first'), 'err'); return }
     try {
       await applyProfileSettings(p.settings)
       setWheelConfig(p.settings.wheel)
-      toast(`Profil "${p.name}" appliqué`)
+      toast(t('dash.profile_applied', { name: p.name }))
     } catch (e) {
-      toast('Erreur : ' + e, 'err')
+      toast(t('common.error') + ' : ' + e, 'err')
     }
   }
 
@@ -60,9 +62,9 @@ export function Dashboard() {
   const torquePct = Math.min(100, (torqueNm / wheelConfig.maxTorque) * 100)
 
   const center = async () => {
-    if (!connected) { toast('Connectez la carte d\'abord', 'err'); return }
+    if (!connected) { toast(t('common.connect_first'), 'err'); return }
     await window.ow.query('axis.zeroenc!')   // OpenFFBoard zero-encoder action
-    toast('Position centrée')
+    toast(t('dash.centered'))
   }
 
   const toggleInvert = async () => {
@@ -70,7 +72,7 @@ export function Dashboard() {
     setWheelConfig({ ...wheelConfig, invert: next })
     if (connected) {
       await writeProp('axis.invert', next ? 1 : 0, 'offb')
-      toast(next ? 'Axe HID inversé' : 'Axe HID normal')
+      toast(next ? t('dash.axis_inverted') : t('dash.axis_normal'))
     }
   }
 
@@ -79,7 +81,7 @@ export function Dashboard() {
     setWheelConfig({ ...wheelConfig, ffbInvert: next })
     if (connected) {
       await writeProp('axis.ffbinvert', next ? 1 : 0, 'offb')
-      toast(next ? 'FFB inversé' : 'FFB normal')
+      toast(next ? t('dash.ffb_inverted') : t('dash.ffb_normal'))
     }
   }
 
@@ -88,7 +90,7 @@ export function Dashboard() {
       {/* Sélecteur de profil */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 18 }}>
         <select className="dash-profile-select" value={profileId} onChange={(e) => applyProfile(e.target.value)} disabled={!connected || profiles.length === 0}>
-          <option value="">{profiles.length ? 'Choisir un profil…' : 'Aucun profil enregistré'}</option>
+          <option value="">{profiles.length ? t('dash.pick_profile') : t('dash.no_profile')}</option>
           {profiles.map((p) => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
@@ -98,7 +100,7 @@ export function Dashboard() {
       <div className="grid grid--2" style={{ alignItems: 'start' }}>
         {/* ── Left card: the wheel ── */}
         <div className="card dash-wheel-card">
-          <div className="dash-card-title">{connected ? 'Odrive Wheel' : 'Aucun volant'}</div>
+          <div className="dash-card-title">{connected ? t('dash.wheel_name') : t('dash.no_wheel')}</div>
 
           <div className="dash-angle">{hidPos.toFixed(0)}°</div>
 
@@ -119,23 +121,21 @@ export function Dashboard() {
 
           <div className="dash-angle-section">
             <div className="dash-angle-head">
-              <span>Angle de rotation max</span>
+              <span>{t('dash.max_angle')}</span>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <button
                   className={`btn btn--sm ${wheelConfig.invert ? 'btn--primary' : ''}`}
                   onClick={toggleInvert}
-                  title="Inverser le sens de l'axe HID"
                 >
-                  <i className="ti ti-arrows-left-right" /> Inverser l'axe
+                  <i className="ti ti-arrows-left-right" /> {t('dash.invert_axis')}
                 </button>
                 <button
                   className={`btn btn--sm ${wheelConfig.ffbInvert ? 'btn--primary' : ''}`}
                   onClick={toggleFfbInvert}
-                  title="Inverser le sens du couple FFB"
                 >
-                  <i className="ti ti-refresh-dot" /> Inverser FFB
+                  <i className="ti ti-refresh-dot" /> {t('dash.invert_ffb')}
                 </button>
-                <button className="btn btn--sm" onClick={center}>Center</button>
+                <button className="btn btn--sm" onClick={center}>{t('dash.center')}</button>
               </div>
             </div>
             <div className="dash-slider-row">
@@ -163,14 +163,14 @@ export function Dashboard() {
 
         {/* ── Right card: the base ── */}
         <div className="card">
-          <div className="dash-card-title">Odrive Wheel Base</div>
+          <div className="dash-card-title">{t('dash.base_name')}</div>
 
           <div className="dash-base">
             <div className="dash-base-img">
               <i className="ti ti-engine" />
             </div>
             <div className="dash-base-controls">
-              <div className="dash-control-label">Game Force Feedback Intensity</div>
+              <div className="dash-control-label">{t('dash.ffb_intensity')}</div>
               <div className="dash-control-row">
                 <input
                   type="range" min={0} max={100} value={ffbIntensity}
@@ -179,7 +179,7 @@ export function Dashboard() {
                 <span className="dash-control-val">{ffbIntensity} %</span>
               </div>
 
-              <div className="dash-control-label" style={{ marginTop: 16 }}>Output Torque</div>
+              <div className="dash-control-label" style={{ marginTop: 16 }}>{t('dash.output_torque')}</div>
               <div className="dash-control-row">
                 <div className="dash-torque-track">
                   <div className="dash-torque-fill" style={{ width: `${torquePct}%` }} />
@@ -190,13 +190,13 @@ export function Dashboard() {
 
               <div className="dash-workmode">
                 <Toggle on={workMode} onToggle={() => setWorkMode(!workMode)} />
-                <span>Work Mode</span>
+                <span>{t('dash.work_mode')}</span>
               </div>
             </div>
           </div>
 
           <div className="dash-device-id">
-            Device ID: {connected ? `ODW-${port?.replace(/\D/g, '') || '000'}-XDRIVE-MINI` : '—'}
+            {t('dash.device_id')}: {connected ? `ODW-${port?.replace(/\D/g, '') || '000'}-XDRIVE-MINI` : '—'}
           </div>
         </div>
       </div>

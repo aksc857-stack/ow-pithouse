@@ -1,5 +1,7 @@
 import type { PageId } from '@/types'
 import { useNav, type NavItem } from '@/context/NavContext'
+import { useI18n } from '@/context/I18nContext'
+import type { TKey } from '@/locales'
 
 // Entrées du bas — fixes, toujours visibles (Réglages héberge la config du menu).
 const BOTTOM_NAV: NavItem[] = [
@@ -14,6 +16,7 @@ interface SidebarProps {
 
 export function Sidebar({ page, onNavigate }: SidebarProps) {
   const { items, isHidden } = useNav()
+  const { t } = useI18n()
 
   const renderItem = (item: NavItem) => (
     <div
@@ -24,7 +27,7 @@ export function Sidebar({ page, onNavigate }: SidebarProps) {
       tabIndex={0}
     >
       <i className={`ti ${item.icon}`} aria-hidden="true" />
-      <span>{item.label}</span>
+      <span>{t(`nav.${item.id}` as TKey)}</span>
     </div>
   )
 

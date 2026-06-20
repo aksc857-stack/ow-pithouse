@@ -43,6 +43,7 @@ reflects what's actually flashed, not hard-coded defaults.
 | **DFU flash** — WebUSB DfuSe (reboot DFU → detect bootloader → pick .bin → flash), preserves FFB EEPROM (S1/S2) | ✅ implemented (not tested on hardware) |
 | Serial transport — single-flight FIFO queue + resync guard (mirrors the reference tool, avoids CDC desync) | ✅ working |
 | **Sidebar** — drag-to-reorder and hide/show tabs, persisted (Settings → *Menu latéral*) | ✅ working |
+| **Languages** — FR / EN / PT-BR switcher in Settings, persisted | ✅ infra + key pages (Dashboard, FFB, Filters, Settings); other pages still FR |
 | **Overlay** (in-game telemetry window) | 🚧 experimental |
 | Saving — live edits write to RAM instantly; **Save** persists FFB EEPROM (`sys.save!`) + ODrive NVM (`ss`) | ✅ working |
 
@@ -114,9 +115,12 @@ src/
   App.tsx            # Shell + page routing
 
   context/
-    DeviceContext.tsx  # Connection state, auto-connect, live polling, auto-read, console log
+    DeviceContext.tsx  # Connection state, auto-connect, live polling (pausable), console log
     ThemeContext.tsx   # Accent colour (persisted)
     NavContext.tsx     # Sidebar order + hidden tabs (persisted, reorderable)
+    I18nContext.tsx    # Language + t() translator (persisted)
+
+  locales/             # fr (source) / en / pt-br dictionaries
 
   hooks/
     useLiveApply.ts    # Per-field debounced live writes (sliders -> board)
@@ -168,10 +172,14 @@ const range = await readProp('axis.range', 'offb')
 await writeProp('axis0.motor.config.current_lim', 20, 'odrv')
 ```
 
-The transport uses a **single-flight FIFO queue with a resync guard**: only one
-command is in flight at a time, and on a timeout the whole queue and read buffer
-are flushed. This mirrors the reference web tool and prevents the CDC link from
-desyncing (which otherwise causes replies to land on the wrong request).
+The transport is **strictly serialized**: every command (read or write) goes
+through a promise chain in `serial.ts`, so only ONE command is on the wire at a
+time and there is only ever one pending reply. This guarantees a reply can only
+match its own request — essential here because the background telemetry polling
+runs continuously and would otherwise interleave with page reads and cross
+replies (e.g. a read returning another command's value). A 2 s timeout flushes
+the pending entry; writes leave a short drain window so a late error reply is
+discarded before the next command.
 
 The board is found by its USB **VID:PID `1209:0D40`**, so auto-connect works on
 any machine regardless of which COM port Windows assigns.

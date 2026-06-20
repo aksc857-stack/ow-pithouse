@@ -12,7 +12,7 @@ import type { GameProfile, ProfileSettings } from '@/types'
 // Un profil capture les réglages du menu FFB + du menu Filtres, et peut les
 // réappliquer sur la carte (en RAM, comme les sliders).
 export function Profiles() {
-  const { connected, wheelConfig, setWheelConfig } = useDevice()
+  const { connected, wheelConfig, setWheelConfig, pausePolling } = useDevice()
   const [profiles, setProfiles] = useState<GameProfile[]>(() => {
     try { return JSON.parse(localStorage.getItem('ow_profiles') || '[]') } catch { return [] }
   })
@@ -28,13 +28,18 @@ export function Profiles() {
 
   // B — Capture : lit l'état FFB + filtres courant de la carte.
   const captureSettings = async (): Promise<ProfileSettings> => {
-    const seed = EFFECT_DEFS.map((d) => ({ name: d.name, path: d.path, gain: d.defaultGain }))
-    const eff = await readEffectsConfig(seed)
-    const filters = await readFiltersConfig(defaultFilterValues())
-    return {
-      wheel: wheelConfig,
-      effects: Object.fromEntries(eff.map((e) => [e.path, e.gain])),
-      filters,
+    const resume = pausePolling()
+    try {
+      const seed = EFFECT_DEFS.map((d) => ({ name: d.name, path: d.path, gain: d.defaultGain }))
+      const eff = await readEffectsConfig(seed)
+      const filters = await readFiltersConfig(defaultFilterValues())
+      return {
+        wheel: wheelConfig,
+        effects: Object.fromEntries(eff.map((e) => [e.path, e.gain])),
+        filters,
+      }
+    } finally {
+      resume()
     }
   }
 
@@ -232,13 +237,14 @@ const RAW_ACTIONS: { label: string; cmd: string; sub: string; cls?: string; conf
 ]
 
 export function Status() {
-  const { connected, appendLog } = useDevice()
+  const { connected, appendLog, pausePolling } = useDevice()
   const [errs, setErrs] = useState<Record<string, number | null>>({})
   const [busy, setBusy] = useState(false)
 
   const readErrors = async () => {
     if (!connected) { toast('Connectez la carte d\'abord', 'err'); return }
     setBusy(true)
+    const resume = pausePolling()
     try {
       const next: Record<string, number | null> = {}
       for (const d of ERROR_DEFS) {
@@ -247,6 +253,7 @@ export function Status() {
       }
       setErrs(next)
     } finally {
+      resume()
       setBusy(false)
     }
   }

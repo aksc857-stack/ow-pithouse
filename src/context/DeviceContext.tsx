@@ -26,6 +26,8 @@ interface DeviceContextValue {
   reloadFromBoard: () => Promise<void>
   appendLog: (type: 'tx' | 'rx' | 'info' | 'err', text: string) => void
   clearLog: () => void
+  /** Suspend le polling de fond ; renvoie la fonction de reprise (finally). */
+  pausePolling: () => () => void
 }
 
 const DeviceContext = createContext<DeviceContextValue | null>(null)
@@ -46,12 +48,23 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   const t0 = useRef(Date.now())
   const connectedRef = useRef(false)
   const autoConnectingRef = useRef(false)
+  // Compteur de pause du polling : >0 = une page lit, le polling de fond attend
+  // (réduit la latence des « Relire »). Compteur pour gérer les lectures imbriquées.
+  const pollPauseRef = useRef(0)
 
   const appendLog = useCallback((type: 'tx' | 'rx' | 'info' | 'err', text: string) => {
     setLog((prev) => [...prev.slice(-200), { type, text, ts: Date.now() }])
   }, [])
 
   const clearLog = useCallback(() => setLog([]), [])
+
+  // Suspend le polling de fond le temps d'une lecture de page. Renvoie la fonction
+  // de reprise (à appeler dans un finally).
+  const pausePolling = useCallback(() => {
+    pollPauseRef.current++
+    let released = false
+    return () => { if (!released) { released = true; pollPauseRef.current = Math.max(0, pollPauseRef.current - 1) } }
+  }, [])
 
   // Identify the ODrive-Wheel board among the available ports.
   // Primary: friendlyName/manufacturer contains "ODrive-Wheel" (the CDC name).
@@ -180,7 +193,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 
     const poll = async () => {
       if (cancelled) return
-      if (connectedRef.current && !reading && window.ow) {
+      if (connectedRef.current && !reading && pollPauseRef.current === 0 && window.ow) {
         // Polling de fond : log:false pour ne pas inonder la Console.
         const vb = await readProp('vbus_voltage', 'odrv', { log: false })
         const iq = await readProp('axis0.motor.current_control.Iq_measured', 'odrv', { log: false })
@@ -220,7 +233,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   return (
     <DeviceContext.Provider value={{
       connected, port, ports, live, reading, wheelConfig, setWheelConfig, log,
-      refreshPorts, connect, disconnect, sendCommand, reloadFromBoard, appendLog, clearLog,
+      refreshPorts, connect, disconnect, sendCommand, reloadFromBoard, appendLog, clearLog, pausePolling,
     }}>
       {children}
     </DeviceContext.Provider>

@@ -19,6 +19,10 @@ export class SerialManager {
   private port: SerialPort | null = null
   private parser: ReadlineParser | null = null
   private pending: Pending[] = []
+  // Chaîne de sérialisation : garantit qu'UNE seule commande est sur le fil à la
+  // fois. Sans ça, polling de fond + lectures de page s'entrelacent et les
+  // réponses se croisent (FIFO désynchronisée → valeurs erronées).
+  private chain: Promise<unknown> = Promise.resolve()
 
   constructor(win: BrowserWindow) {
     this.win = win
@@ -91,32 +95,45 @@ export class SerialManager {
     })
   }
 
-  /** Write-only command (no reply expected). */
+  /** Enfile une tâche : exécutée seulement quand la précédente est terminée. */
+  private enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const result = this.chain.then(task, task)
+    this.chain = result.catch(() => { /* ne casse pas la chaîne sur erreur */ })
+    return result
+  }
+
+  /** Write-only command (no reply expected). Sérialisé. */
   send(cmd: string): Promise<{ sent: string }> {
+    return this.enqueue(() => this._send(cmd))
+  }
+
+  /** Command expecting exactly one reply line. Sérialisé. */
+  query(cmd: string): Promise<string | null> {
+    return this.enqueue(() => this._query(cmd))
+  }
+
+  private _send(cmd: string): Promise<{ sent: string }> {
     return new Promise((resolve, reject) => {
       if (!this.port?.isOpen) return reject('Not connected')
       this.port.write(cmd + '\n', (err) => {
-        if (err) reject(err.message)
-        else resolve({ sent: cmd })
+        if (err) return reject(err.message)
+        // Un write ODrive ne répond qu'en cas d'erreur ("invalid property"…).
+        // On laisse une courte fenêtre pour que cette réponse soit consommée
+        // pending VIDE (donc ignorée) avant la commande suivante.
+        setTimeout(() => resolve({ sent: cmd }), 60)
       })
     })
   }
 
-  /** Command expecting exactly one reply line. */
-  query(cmd: string): Promise<string | null> {
+  private _query(cmd: string): Promise<string | null> {
     return new Promise((resolve, reject) => {
       if (!this.port?.isOpen) return reject('Not connected')
       this.port.write(cmd + '\n', (err) => {
         if (err) return reject(err.message)
         const timeout = setTimeout(() => {
-          // RESYNC GUARD — abort every in-flight request and discard buffered
-          // input so a late reply can't desync the whole queue.
-          const queuedBefore = this.pending.length
-          this.pending.forEach((p) => { clearTimeout(p.timeout); try { p.resolve(null) } catch { /* */ } })
-          this.pending = []
-          if (queuedBefore > 1) {
-            console.warn(`[serial] timeout — flushed ${queuedBefore - 1} in-flight cmds to resync`)
-          }
+          // Une seule commande en vol : on vide pending pour qu'une réponse
+          // tardive ne soit pas appariée à la commande suivante.
+          this.flushPending()
           resolve(null)
         }, 2000)
         this.pending.push({ resolve, timeout })
