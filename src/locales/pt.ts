@@ -83,6 +83,7 @@ export const pt: Partial<Record<TKey, string>> = {
   'set.com_port': 'Porta COM',
   'set.com_port_manual': '(manual — auto ativado)',
   'set.choose_port': 'Escolher uma porta...',
+  'set.no_ports': 'Nenhuma porta detectada',
   'set.connect': 'Conectar',
   'set.disconnect': 'Desconectar',
   'set.prefs': 'Preferências',

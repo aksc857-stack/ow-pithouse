@@ -89,6 +89,7 @@ export const fr = {
   'set.com_port': 'Port COM',
   'set.com_port_manual': '(manuel — auto activé)',
   'set.choose_port': 'Choisir un port...',
+  'set.no_ports': 'Aucun port détecté',
   'set.connect': 'Connecter',
   'set.disconnect': 'Déconnecter',
   'set.prefs': 'Préférences',
