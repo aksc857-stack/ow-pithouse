@@ -7,6 +7,7 @@ import { FFB, Filters } from '@/pages/Config'
 import { Odrive } from '@/pages/Odrive'
 import { Profiles, Status, Console } from '@/pages/Tools'
 import { Themes, Settings } from '@/pages/Preferences'
+import { useAutoProfile } from '@/hooks/useAutoProfile'
 import type { PageId } from '@/types'
 
 const PAGES: Record<PageId, () => JSX.Element> = {
@@ -24,6 +25,7 @@ const PAGES: Record<PageId, () => JSX.Element> = {
 export function App() {
   const [page, setPage] = useState<PageId>('dashboard')
   const PageComponent = PAGES[page]
+  useAutoProfile()   // boucle de fond : bascule auto de profil selon le jeu lancé
 
   return (
     <div className="app">

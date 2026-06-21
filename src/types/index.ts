@@ -30,6 +30,10 @@ export interface OwApi {
   openOverlay: () => void
   closeOverlay: () => void
 
+  // Profils / auto-switch
+  pickGameExe: () => Promise<{ path: string; name: string; icon: string } | null>
+  listProcesses: () => Promise<string[]>   // noms d'exécutables en cours (minuscules)
+
   onSerialData: (cb: (line: string) => void) => () => void
   onConnected: (cb: (data: { port: string }) => void) => () => void
   onDisconnected: (cb: () => void) => () => void
@@ -85,7 +89,8 @@ export interface GameProfile {
   id: string
   name: string
   exe?: string
-  icon: string
+  icon: string             // classe Tabler de repli (ti-*)
+  iconImage?: string       // icône importée depuis l'.exe (data URL PNG)
   settings?: ProfileSettings
   active?: boolean
 }

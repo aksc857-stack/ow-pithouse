@@ -57,10 +57,9 @@ button { font-family: inherit; }
 input, select { font-family: inherit; }
 
 // ── Scrollbar ─────────────────────────────────────────────────────────────────
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-soft); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+// Masquée partout (le défilement reste actif) — choix esthétique.
+* { scrollbar-width: none; -ms-overflow-style: none; }
+::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
 // ── App shell ─────────────────────────────────────────────────────────────────
 .app {
@@ -721,6 +720,86 @@ input, select { font-family: inherit; }
   border-top: 1px solid var(--border);
   font-size: 12px;
   color: var(--text-faint);
+}
+
+// ── Carte Profils (Dashboard) : liste scrollable + lignes denses ──
+.dash-prof-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;   // même rythme que les autres cartes avant leur contenu
+}
+
+.dash-prof-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  // Remplit la hauteur de la carte (alignée sur le volant) ; déborde → scroll interne.
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.dash-prof-empty {
+  font-size: 12px;
+  color: var(--text-faint);
+  padding: 4px 0;
+}
+
+.dash-prof-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  flex-shrink: 0;            // ne pas comprimer les lignes : laisser la liste déborder → scroll
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  cursor: pointer;          // toute la ligne charge le profil au clic
+  transition: border-color 0.12s, background 0.12s;
+
+  &:hover { border-color: var(--accent); background: var(--bg-card); }
+  &.active { border-color: var(--accent); }
+}
+
+.dash-prof-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  overflow: hidden;   // clippe l'icône importée aux coins arrondis
+}
+
+.dash-prof-info { flex: 1; min-width: 0; }
+
+.dash-prof-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-prof-badge {
+  font-size: 10px;
+  color: var(--accent);
+  margin-left: 8px;
+}
+
+.dash-prof-sum {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 // ═══════════════════════════════════════════════════════════════════

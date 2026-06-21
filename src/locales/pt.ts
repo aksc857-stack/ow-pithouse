@@ -43,6 +43,7 @@ export const pt: Partial<Record<TKey, string>> = {
   'dash.ffb_inverted': 'FFB invertido',
   'dash.ffb_normal': 'FFB normal',
   'dash.profile_applied': 'Perfil “{name}” aplicado',
+  'dash.prof_empty': 'Nenhum perfil. “Criar” captura os ajustes FFB + Filtros atuais.',
 
   'ffb.title': 'Force Feedback',
   'ffb.sub_reading': 'Lendo configurações da placa...',
@@ -129,6 +130,8 @@ export const pt: Partial<Record<TKey, string>> = {
   'prof.updated': 'Perfil atualizado com os ajustes atuais',
   'prof.no_settings': 'Este perfil não tem ajustes salvos',
   'prof.applied': 'Perfil “{name}” aplicado — Salve (FFB) para persistir',
+  'prof.pick_exe': 'Importar do .exe',
+  'prof.autoswitch_log': 'Auto-switch: perfil “{name}” ({exe})',
 
   // Status
   'status.title': 'Status',

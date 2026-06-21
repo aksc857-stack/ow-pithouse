@@ -1,6 +1,10 @@
-import { app, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron'
 import path from 'node:path'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { SerialManager } from './serial'
+
+const execFileAsync = promisify(execFile)
 
 process.env.APP_ROOT = path.join(__dirname, '..')
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
@@ -112,3 +116,40 @@ ipcMain.on('overlay:open', () => {
 })
 
 ipcMain.on('overlay:close', () => overlayWin?.close())
+
+// ── Profils / auto-switch ──────────────────────────────────────────────────────
+// Sélection de l'exécutable d'un jeu + extraction de son icône (PNG data URL).
+ipcMain.handle('app:pickGameExe', async () => {
+  if (!win) return null
+  const res = await dialog.showOpenDialog(win, {
+    title: "Choisir l'exécutable du jeu",
+    properties: ['openFile'],
+    filters: [{ name: 'Exécutable', extensions: ['exe'] }],
+  })
+  if (res.canceled || !res.filePaths[0]) return null
+  const p = res.filePaths[0]
+  let icon = ''
+  try {
+    const img = await app.getFileIcon(p, { size: 'large' })   // NativeImage natif Electron
+    if (!img.isEmpty()) icon = img.toDataURL()
+  } catch { /* pas d'icône extractible : on renvoie une chaîne vide */ }
+  return { path: p, name: path.basename(p), icon }
+})
+
+// Liste des exécutables en cours (noms en minuscules) pour l'auto-switch.
+ipcMain.handle('app:listProcesses', async () => {
+  if (process.platform !== 'win32') return []
+  try {
+    const { stdout } = await execFileAsync('tasklist', ['/fo', 'csv', '/nh'], {
+      windowsHide: true, maxBuffer: 8 * 1024 * 1024,
+    })
+    const names = new Set<string>()
+    for (const line of stdout.split(/\r?\n/)) {
+      const m = line.match(/^"([^"]+)"/)   // 1re colonne CSV = nom de l'image
+      if (m) names.add(m[1].toLowerCase())
+    }
+    return [...names]
+  } catch {
+    return []
+  }
+})

@@ -25,6 +25,10 @@ const api = {
   openOverlay: () => ipcRenderer.send('overlay:open'),
   closeOverlay: () => ipcRenderer.send('overlay:close'),
 
+  // Profils / auto-switch
+  pickGameExe: () => ipcRenderer.invoke('app:pickGameExe'),
+  listProcesses: () => ipcRenderer.invoke('app:listProcesses'),
+
   // Events
   onSerialData: (cb: (line: string) => void) => {
     const handler = (_e: unknown, line: string) => cb(line)

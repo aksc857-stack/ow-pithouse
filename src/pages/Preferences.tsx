@@ -139,13 +139,19 @@ function SettingsForm() {
   const [selectedPort, setSelectedPort] = useState('')
   const [autoConnect, setAutoConnect] = useState(() => localStorage.getItem('ow_autoconnect') !== 'off')
   const [startup, setStartup] = useState(true)
-  const [autoProfile, setAutoProfile] = useState(true)
+  const [autoProfile, setAutoProfile] = useState(() => localStorage.getItem('ow_autoprofile') === 'on')
   const [minimizeTray, setMinimizeTray] = useState(false)
 
   const toggleAutoConnect = () => {
     const next = !autoConnect
     setAutoConnect(next)
     localStorage.setItem('ow_autoconnect', next ? 'on' : 'off')
+  }
+
+  const toggleAutoProfile = () => {
+    const next = !autoProfile
+    setAutoProfile(next)
+    localStorage.setItem('ow_autoprofile', next ? 'on' : 'off')
   }
 
   const portLabel = (p: typeof ports[number]) => {
@@ -215,7 +221,7 @@ function SettingsForm() {
           </div>
           <div className="stat">
             <span className="stat__label">{t('set.autoprofile')}</span>
-            <Toggle on={autoProfile} onToggle={() => setAutoProfile(!autoProfile)} />
+            <Toggle on={autoProfile} onToggle={toggleAutoProfile} />
           </div>
           <div className="stat">
             <span className="stat__label">{t('set.tray')}</span>

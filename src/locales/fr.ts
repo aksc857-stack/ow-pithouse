@@ -46,6 +46,7 @@ export const fr = {
   'dash.ffb_inverted': 'FFB inversé',
   'dash.ffb_normal': 'FFB normal',
   'dash.profile_applied': 'Profil « {name} » appliqué',
+  'dash.prof_empty': "Aucun profil. « Créer » capture les réglages FFB + Filtres actuels.",
 
   // FFB
   'ffb.title': 'Force Feedback',
@@ -136,6 +137,8 @@ export const fr = {
   'prof.updated': 'Profil mis à jour avec les réglages actuels',
   'prof.no_settings': "Ce profil n'a pas de réglages enregistrés",
   'prof.applied': 'Profil « {name} » appliqué — Sauvegardez (FFB) pour persister',
+  'prof.pick_exe': "Importer depuis l'.exe",
+  'prof.autoswitch_log': 'Auto-switch : profil « {name} » ({exe})',
 
   // Status
   'status.title': 'Status',

@@ -43,6 +43,7 @@ export const en: Partial<Record<TKey, string>> = {
   'dash.ffb_inverted': 'FFB inverted',
   'dash.ffb_normal': 'FFB normal',
   'dash.profile_applied': 'Profile “{name}” applied',
+  'dash.prof_empty': 'No profile. “Create” captures the current FFB + Filters settings.',
 
   'ffb.title': 'Force Feedback',
   'ffb.sub_reading': 'Reading board settings...',
@@ -129,6 +130,8 @@ export const en: Partial<Record<TKey, string>> = {
   'prof.updated': 'Profile updated with the current settings',
   'prof.no_settings': 'This profile has no saved settings',
   'prof.applied': 'Profile “{name}” applied — Save (FFB) to persist',
+  'prof.pick_exe': 'Import from .exe',
+  'prof.autoswitch_log': 'Auto-switch: profile “{name}” ({exe})',
 
   // Status
   'status.title': 'Status',
