@@ -90,7 +90,7 @@ export function Dashboard() {
 
   const summary = (p: GameProfile) =>
     p.settings
-      ? t('prof.summary', { torque: p.settings.wheel.maxTorque, range: p.settings.wheel.range, master: p.settings.wheel.masterGain })
+      ? t('prof.summary', { torque: p.settings.wheel.maxTorque, range: p.settings.wheel.range, fxRatio: p.settings.wheel.fxRatio })
       : t('prof.summary_none')
 
   const angle = wheelConfig.range
@@ -100,10 +100,10 @@ export function Dashboard() {
     if (connected) liveApply('range', () => applyWheelField('range', v))
   }
 
-  // Curseur intensité FFB (masterGain) : appliqué en direct sur fx.master.
-  const setMasterGain = (v: number) => {
-    setWheelConfig({ ...wheelConfig, masterGain: v })
-    if (connected) liveApply('masterGain', () => applyWheelField('masterGain', v))
+  // Curseur intensité FFB : appliqué en direct sur axis.fxratio (fxRatio).
+  const setFxRatio = (v: number) => {
+    setWheelConfig({ ...wheelConfig, fxRatio: v })
+    if (connected) liveApply('fxRatio', () => applyWheelField('fxRatio', v))
   }
 
   // live.position vient de axis.curpos? (degrés HID) : zeroenc et axis.invert
@@ -114,7 +114,7 @@ export function Dashboard() {
   const clamped = Math.max(-halfRange, Math.min(halfRange, hidPos))
   const posPct = 50 + (clamped / angle) * 100   // 0..100 across the bar
 
-  const ffbIntensity = wheelConfig.masterGain
+  const ffbIntensity = wheelConfig.fxRatio
   const torqueNm = Math.abs(live.torque)
   const torquePct = Math.min(100, (torqueNm / wheelConfig.maxTorque) * 100)
 
@@ -225,7 +225,7 @@ export function Dashboard() {
               <div className="dash-control-row">
                 <input
                   type="range" min={0} max={100} value={ffbIntensity}
-                  onChange={(e) => setMasterGain(parseInt(e.target.value))}
+                  onChange={(e) => setFxRatio(parseInt(e.target.value))}
                 />
                 <span className="dash-control-val">{ffbIntensity} %</span>
               </div>

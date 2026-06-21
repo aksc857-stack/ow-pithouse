@@ -120,7 +120,7 @@ export const en: Partial<Record<TKey, string>> = {
   'prof.capture_note': "The board's current FFB + Filters settings will be captured into this profile.",
   'prof.create': 'Create',
   'prof.save': 'Save',
-  'prof.summary': 'torque {torque} Nm · {range}° · master {master}%',
+  'prof.summary': 'torque {torque} Nm · {range}° · fx ratio {fxRatio}%',
   'prof.summary_none': 'no saved settings',
   'prof.connect_capture': 'Connect the board to capture settings',
   'prof.name_required': 'Give the profile a name',
@@ -131,6 +131,8 @@ export const en: Partial<Record<TKey, string>> = {
   'prof.no_settings': 'This profile has no saved settings',
   'prof.applied': 'Profile “{name}” applied — Save (FFB) to persist',
   'prof.pick_exe': 'Import from .exe',
+  'prof.pick_icon': 'Icon (.ico file)',
+  'prof.icon_reset': 'Default icon',
   'prof.autoswitch_log': 'Auto-switch: profile “{name}” ({exe})',
 
   // Status

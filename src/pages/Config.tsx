@@ -79,7 +79,6 @@ export function FFB() {
           <div className="card__head"><i className="ti ti-steering-wheel" />{t('ffb.card_wheel')}</div>
           <Slider label={t('ffb.range')} value={wheelConfig.range} min={90} max={1440} step={90} unit="°" onChange={(v) => update('range', v)} />
           <Slider label={t('ffb.max_torque')} value={wheelConfig.maxTorque} min={0.5} max={12} step={0.1} format={(v) => `${v.toFixed(1)} Nm`} onChange={(v) => update('maxTorque', v)} />
-          <Slider label={t('ffb.master_gain')} value={wheelConfig.masterGain} min={0} max={100} unit="%" onChange={(v) => update('masterGain', v)} />
           <Slider label={t('ffb.fx_ratio')} value={wheelConfig.fxRatio} min={0} max={100} unit="%" onChange={(v) => update('fxRatio', v)} />
         </div>
         <div className="card">
@@ -96,6 +95,7 @@ export function FFB() {
           <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '-4px 0 12px', lineHeight: 1.6 }}>
             {t('ffb.card_added_desc')}
           </p>
+          <Slider label={t('ffb.master_gain')} value={wheelConfig.masterGain} min={0} max={100} unit="%" onChange={(v) => update('masterGain', v)} />
           <Slider label={t('ffb.centering')} value={wheelConfig.idleSpring} min={0} max={100} unit="%" onChange={(v) => update('idleSpring', v)} />
           <Slider label={t('ffb.damper')} value={wheelConfig.damper} min={0} max={100} unit="%" onChange={(v) => update('damper', v)} />
           <Slider label={t('ffb.inertia')} value={wheelConfig.inertia} min={0} max={100} unit="%" onChange={(v) => update('inertia', v)} />

@@ -1,5 +1,6 @@
-import { app, BrowserWindow, ipcMain, Menu, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, dialog, nativeImage } from 'electron'
 import path from 'node:path'
+import { readFile } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { SerialManager } from './serial'
@@ -134,6 +135,36 @@ ipcMain.handle('app:pickGameExe', async () => {
     if (!img.isEmpty()) icon = img.toDataURL()
   } catch { /* pas d'icône extractible : on renvoie une chaîne vide */ }
   return { path: p, name: path.basename(p), icon }
+})
+
+// Choisir une icône depuis un fichier image (.ico/.png/.jpg) — pour les jeux dont
+// l'icône n'est pas embarquée dans l'.exe mais fournie à part.
+ipcMain.handle('app:pickIconFile', async () => {
+  if (!win) return null
+  const res = await dialog.showOpenDialog(win, {
+    title: 'Choisir une icône',
+    properties: ['openFile'],
+    filters: [{ name: 'Image', extensions: ['ico', 'png', 'jpg', 'jpeg', 'bmp'] }],
+  })
+  if (res.canceled || !res.filePaths[0]) return null
+  const p = res.filePaths[0]
+  // 1) Normalisation via nativeImage (gère .ico multi-tailles → PNG).
+  try {
+    const img = nativeImage.createFromPath(p)
+    if (!img.isEmpty()) return { path: p, name: path.basename(p), icon: img.toDataURL() }
+  } catch { /* repli ci-dessous */ }
+  // 2) Repli : octets bruts + mime déduit de l'extension (Chromium rend les .ico).
+  try {
+    const buf = await readFile(p)
+    const ext = path.extname(p).toLowerCase()
+    const mime = ext === '.png' ? 'image/png'
+      : ext === '.ico' ? 'image/x-icon'
+      : ext === '.bmp' ? 'image/bmp'
+      : 'image/jpeg'
+    return { path: p, name: path.basename(p), icon: `data:${mime};base64,${buf.toString('base64')}` }
+  } catch {
+    return null
+  }
 })
 
 // Liste des exécutables en cours (noms en minuscules) pour l'auto-switch.

@@ -127,7 +127,7 @@ export const fr = {
   'prof.capture_note': 'Les réglages FFB + Filtres actuels de la carte seront capturés dans ce profil.',
   'prof.create': 'Créer',
   'prof.save': 'Enregistrer',
-  'prof.summary': 'couple {torque} Nm · {range}° · master {master}%',
+  'prof.summary': 'couple {torque} Nm · {range}° · fx ratio {fxRatio}%',
   'prof.summary_none': 'pas de réglages enregistrés',
   'prof.connect_capture': 'Connectez la carte pour capturer les réglages',
   'prof.name_required': 'Donnez un nom au profil',
@@ -138,6 +138,8 @@ export const fr = {
   'prof.no_settings': "Ce profil n'a pas de réglages enregistrés",
   'prof.applied': 'Profil « {name} » appliqué — Sauvegardez (FFB) pour persister',
   'prof.pick_exe': "Importer depuis l'.exe",
+  'prof.pick_icon': 'Icône (fichier .ico)',
+  'prof.icon_reset': 'Icône par défaut',
   'prof.autoswitch_log': 'Auto-switch : profil « {name} » ({exe})',
 
   // Status
