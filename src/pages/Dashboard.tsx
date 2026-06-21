@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useDevice } from '@/context/DeviceContext'
 import { useLiveApply } from '@/hooks/useLiveApply'
 import { useI18n } from '@/context/I18nContext'
-import { Toggle, toast } from '@/components/ui'
+import { toast } from '@/components/ui'
 import { writeProp } from '@/lib/odrive'
 import { applyWheelField, applyProfileSettings, captureProfileSettings } from '@/lib/ffbConfig'
 import { loadProfiles, saveProfiles, PROFILES_EVENT } from '@/lib/profiles'
@@ -14,7 +14,6 @@ const ANGLE_PRESETS = [360, 540, 720, 900, 1080]
 export function Dashboard() {
   const { live, wheelConfig, setWheelConfig, connected, port, pausePolling } = useDevice()
   const { t } = useI18n()
-  const [workMode, setWorkMode] = useState(true)
   const liveApply = useLiveApply()
 
   // Profils enregistrés (capturés ici ou dans le menu Profils — même localStorage).
@@ -115,8 +114,6 @@ export function Dashboard() {
   const posPct = 50 + (clamped / angle) * 100   // 0..100 across the bar
 
   const ffbIntensity = wheelConfig.fxRatio
-  const torqueNm = Math.abs(live.torque)
-  const torquePct = Math.min(100, (torqueNm / wheelConfig.maxTorque) * 100)
 
   const center = async () => {
     if (!connected) { toast(t('common.connect_first'), 'err'); return }
@@ -228,20 +225,6 @@ export function Dashboard() {
                   onChange={(e) => setFxRatio(parseInt(e.target.value))}
                 />
                 <span className="dash-control-val">{ffbIntensity} %</span>
-              </div>
-
-              <div className="dash-control-label" style={{ marginTop: 16 }}>{t('dash.output_torque')}</div>
-              <div className="dash-control-row">
-                <div className="dash-torque-track">
-                  <div className="dash-torque-fill" style={{ width: `${torquePct}%` }} />
-                </div>
-                <span className="dash-control-val">{torquePct.toFixed(0)} %</span>
-              </div>
-              <div className="dash-torque-nm">{torqueNm.toFixed(2)} Nm</div>
-
-              <div className="dash-workmode">
-                <Toggle on={workMode} onToggle={() => setWorkMode(!workMode)} />
-                <span>{t('dash.work_mode')}</span>
               </div>
             </div>
           </div>
