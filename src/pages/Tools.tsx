@@ -4,7 +4,8 @@ import { useI18n } from '@/context/I18nContext'
 import { toast } from '@/components/ui'
 import { readProp } from '@/lib/odrive'
 import { ERROR_DEFS, decodeError, toHex } from '@/lib/odriveErrors'
-import { applyProfileSettings, readEffectsConfig, readFiltersConfig, defaultFilterValues, EFFECT_DEFS } from '@/lib/ffbConfig'
+import { applyProfileSettings, captureProfileSettings } from '@/lib/ffbConfig'
+import { loadProfiles, saveProfiles, PROFILES_EVENT } from '@/lib/profiles'
 import { buildCommandList, GROUP_LABELS, type CmdItem } from '@/lib/commandList'
 import { DfuClient, type DfuLogKind } from '@/lib/dfu'
 import type { GameProfile, ProfileSettings } from '@/types'
@@ -15,31 +16,29 @@ import type { GameProfile, ProfileSettings } from '@/types'
 export function Profiles() {
   const { connected, wheelConfig, setWheelConfig, pausePolling } = useDevice()
   const { t } = useI18n()
-  const [profiles, setProfiles] = useState<GameProfile[]>(() => {
-    try { return JSON.parse(localStorage.getItem('ow_profiles') || '[]') } catch { return [] }
-  })
+  const [profiles, setProfiles] = useState<GameProfile[]>(loadProfiles)
   const [busy, setBusy] = useState(false)
   // Modal création/édition (Electron ne supporte pas window.prompt).
   // id null = création (capture les réglages) ; id défini = renommage.
-  const [form, setForm] = useState<{ id: string | null; name: string; exe: string } | null>(null)
+  const [form, setForm] = useState<{ id: string | null; name: string; exe: string; iconImage?: string } | null>(null)
+
+  // Resynchro live si un autre acteur modifie les profils (carte Dashboard, auto-switch).
+  useEffect(() => {
+    const onChange = () => setProfiles(loadProfiles())
+    window.addEventListener(PROFILES_EVENT, onChange)
+    return () => window.removeEventListener(PROFILES_EVENT, onChange)
+  }, [])
 
   const persist = (next: GameProfile[]) => {
     setProfiles(next)
-    localStorage.setItem('ow_profiles', JSON.stringify(next))
+    saveProfiles(next)
   }
 
   // B — Capture : lit l'état FFB + filtres courant de la carte.
   const captureSettings = async (): Promise<ProfileSettings> => {
     const resume = pausePolling()
     try {
-      const seed = EFFECT_DEFS.map((d) => ({ name: d.name, path: d.path, gain: d.defaultGain }))
-      const eff = await readEffectsConfig(seed)
-      const filters = await readFiltersConfig(defaultFilterValues())
-      return {
-        wheel: wheelConfig,
-        effects: Object.fromEntries(eff.map((e) => [e.path, e.gain])),
-        filters,
-      }
+      return await captureProfileSettings(wheelConfig)
     } finally {
       resume()
     }
@@ -50,7 +49,20 @@ export function Profiles() {
     setForm({ id: null, name: '', exe: '' })
   }
 
-  const openEdit = (p: GameProfile) => setForm({ id: p.id, name: p.name, exe: p.exe || '' })
+  const openEdit = (p: GameProfile) => setForm({ id: p.id, name: p.name, exe: p.exe || '', iconImage: p.iconImage })
+
+  // Importer l'exe d'un jeu : remplit le nom du process + l'icône (et le nom si vide).
+  const pickExe = async () => {
+    if (!form) return
+    const res = await window.ow?.pickGameExe()
+    if (!res) return
+    setForm({
+      ...form,
+      exe: res.name,
+      iconImage: res.icon || form.iconImage,
+      name: form.name.trim() || res.name.replace(/\.exe$/i, ''),
+    })
+  }
 
   const submit = async () => {
     if (!form) return
@@ -58,9 +70,9 @@ export function Profiles() {
     if (!name) { toast(t('prof.name_required'), 'err'); return }
     const exe = form.exe.trim()
 
-    // Édition : renomme sans recapturer les réglages.
+    // Édition : renomme + exe/icône sans recapturer les réglages.
     if (form.id !== null) {
-      persist(profiles.map((p) => (p.id === form.id ? { ...p, name, exe } : p)))
+      persist(profiles.map((p) => (p.id === form.id ? { ...p, name, exe, iconImage: form.iconImage ?? p.iconImage } : p)))
       toast(t('prof.renamed'))
       setForm(null)
       return
@@ -71,7 +83,7 @@ export function Profiles() {
     setBusy(true)
     try {
       const settings = await captureSettings()
-      persist([...profiles, { id: Date.now().toString(), name, exe, icon: 'ti-device-gamepad', settings }])
+      persist([...profiles, { id: Date.now().toString(), name, exe, icon: 'ti-device-gamepad', iconImage: form.iconImage, settings }])
       toast(t('prof.created', { name }))
       setForm(null)
     } catch (e) {
@@ -145,8 +157,10 @@ export function Profiles() {
               borderRadius: 'var(--r-md)',
             }}
           >
-            <div style={{ width: 42, height: 42, borderRadius: 'var(--r-md)', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontSize: 20, flexShrink: 0 }}>
-              <i className={`ti ${p.icon}`} />
+            <div style={{ width: 42, height: 42, borderRadius: 'var(--r-md)', background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontSize: 20, flexShrink: 0, overflow: 'hidden' }}>
+              {p.iconImage
+                ? <img src={p.iconImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                : <i className={`ti ${p.icon}`} />}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 500 }}>{p.name}{p.active && <span style={{ fontSize: 10, color: 'var(--accent)', marginLeft: 8 }}>● {t('prof.active')}</span>}</div>
@@ -159,7 +173,7 @@ export function Profiles() {
               <i className="ti ti-pencil" />
             </button>
             <button className="btn btn--sm" onClick={() => recapture(p.id)} disabled={!connected || busy} title={t('prof.recapture')}>
-              <i className="ti ti-refresh" />
+              <i className="ti ti-device-floppy" />
             </button>
             <button className="btn btn--sm btn--danger" onClick={() => remove(p.id)} title={t('common.delete')}>
               <i className="ti ti-trash" />
@@ -193,13 +207,21 @@ export function Profiles() {
             </div>
             <div className="field" style={{ marginBottom: 16 }}>
               <label>{t('prof.exe_label')}</label>
-              <input
-                value={form.exe}
-                onChange={(e) => setForm({ ...form, exe: e.target.value })}
-                onKeyDown={(e) => e.key === 'Enter' && submit()}
-                placeholder={t('prof.exe_ph')}
-                style={{ width: '100%', padding: '8px 12px', background: 'var(--bg-sunken)', color: 'var(--text)', border: '1px solid var(--border-soft)', borderRadius: 'var(--r-sm)', fontSize: 13, outline: 'none' }}
-              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {form.iconImage && (
+                  <img src={form.iconImage} alt="" style={{ width: 34, height: 34, borderRadius: 'var(--r-sm)', objectFit: 'contain', flexShrink: 0 }} />
+                )}
+                <input
+                  value={form.exe}
+                  onChange={(e) => setForm({ ...form, exe: e.target.value })}
+                  onKeyDown={(e) => e.key === 'Enter' && submit()}
+                  placeholder={t('prof.exe_ph')}
+                  style={{ flex: 1, padding: '8px 12px', background: 'var(--bg-sunken)', color: 'var(--text)', border: '1px solid var(--border-soft)', borderRadius: 'var(--r-sm)', fontSize: 13, outline: 'none' }}
+                />
+                <button className="btn btn--sm" onClick={pickExe} disabled={busy} title={t('prof.pick_exe')}>
+                  <i className="ti ti-folder-search" /> {t('prof.pick_exe')}
+                </button>
+              </div>
             </div>
             {!form.id && (
               <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16, lineHeight: 1.6 }}>
