@@ -88,8 +88,16 @@ export function toHex(value: number): string {
   return '0x' + (value >>> 0).toString(16).toUpperCase().padStart(8, '0')
 }
 
+/** Libellés UI traduisibles pour les bits non reconnus (noms de bits = constantes firmware, non traduites). */
+export interface DecodeLabels {
+  /** Bits supplémentaires hors couverture, ex. "(+bits 0x...)". */
+  extra: (hex: string) => string
+  /** Valeur non nulle mais aucun bit connu, ex. "(bits inconnus)". */
+  unknown: string
+}
+
 /** Décode un registre d'erreur en liste de bits nommés. */
-export function decodeError(value: number, bits: Record<number, string>): string {
+export function decodeError(value: number, bits: Record<number, string>, labels?: DecodeLabels): string {
   if (!value) return 'OK'
   const out: string[] = []
   let known = 0
@@ -99,6 +107,6 @@ export function decodeError(value: number, bits: Record<number, string>): string
     if (value & m) out.push(name)
   }
   const unkn = value & ~known
-  if (unkn) out.push('(+bits ' + toHex(unkn) + ')')
-  return out.join(' | ') || '(bits inconnus)'
+  if (unkn) out.push(labels ? labels.extra(toHex(unkn)) : '(+bits ' + toHex(unkn) + ')')
+  return out.join(' | ') || labels?.unknown || '(bits inconnus)'
 }
