@@ -5,34 +5,38 @@
 //   3. Commandes OpenFFBoard cmdparser (axis.*, fx.*, sys.*, gpio.*, odrv.*)
 
 import { ODRIVE_SECTIONS } from './odriveSchema'
+import type { TKey } from '@/locales'
+
+type TFn = (key: TKey, vars?: Record<string, string | number>) => string
 
 export type CmdGroup = 'odrv' | 'paths' | 'offb'
 export interface CmdItem { grp: CmdGroup; cmd: string; desc: string }
 
-export const GROUP_LABELS: Record<CmdGroup, string> = {
-  odrv:  'ODrive ASCII',
-  paths: 'Propriétés (schéma)',
-  offb:  'OpenFFBoard (cmdparser)',
+// Mappe chaque groupe vers sa clé i18n (résolue à l'affichage via t()).
+export const GROUP_LABELS: Record<CmdGroup, TKey> = {
+  odrv:  'cmd.grp_odrv',
+  paths: 'cmd.grp_paths',
+  offb:  'cmd.grp_offb',
 }
 
-export function buildCommandList(): CmdItem[] {
+export function buildCommandList(t: TFn): CmdItem[] {
   const items: CmdItem[] = []
 
   // ── 1. ODrive ASCII fondamentaux ──────────────────────────────────────────
   items.push(
-    { grp: 'odrv', cmd: 'r ',         desc: 'Lire une propriété — compléter avec le path' },
-    { grp: 'odrv', cmd: 'w  ',        desc: 'Écrire une propriété — path + valeur' },
-    { grp: 'odrv', cmd: 'ss',         desc: 'Save config en NVM' },
-    { grp: 'odrv', cmd: 'sr',         desc: 'Reboot' },
-    { grp: 'odrv', cmd: 'sc',         desc: 'Clear errors sur tous les axes' },
-    { grp: 'odrv', cmd: 'sd',         desc: 'Soft DFU — bootloader sans BOOT0' },
-    { grp: 'odrv', cmd: 'se',         desc: 'Erase config (factory reset)' },
-    { grp: 'odrv', cmd: 'f 0',        desc: 'Feed watchdog — axe 0' },
-    { grp: 'odrv', cmd: 't 0 ',       desc: 'Trapezoidal move — t <axe> <pos>' },
-    { grp: 'odrv', cmd: 'q 0  10',    desc: 'Input pos filtered — q <axe> <pos> <vel_lim>' },
-    { grp: 'odrv', cmd: 'p 0 0 0 0',  desc: 'Pos setpoint — p <axe> <pos> <vel_ff> <torque_ff>' },
-    { grp: 'odrv', cmd: 'v 0 0 0',    desc: 'Vel setpoint — v <axe> <vel> <torque_ff>' },
-    { grp: 'odrv', cmd: 'c 0 0',      desc: 'Torque setpoint — c <axe> <torque_Nm>' },
+    { grp: 'odrv', cmd: 'r ',         desc: t('cmd.r') },
+    { grp: 'odrv', cmd: 'w  ',        desc: t('cmd.w') },
+    { grp: 'odrv', cmd: 'ss',         desc: t('cmd.ss') },
+    { grp: 'odrv', cmd: 'sr',         desc: t('cmd.sr') },
+    { grp: 'odrv', cmd: 'sc',         desc: t('cmd.sc') },
+    { grp: 'odrv', cmd: 'sd',         desc: t('cmd.sd') },
+    { grp: 'odrv', cmd: 'se',         desc: t('cmd.se') },
+    { grp: 'odrv', cmd: 'f 0',        desc: t('cmd.f') },
+    { grp: 'odrv', cmd: 't 0 ',       desc: t('cmd.t') },
+    { grp: 'odrv', cmd: 'q 0  10',    desc: t('cmd.q') },
+    { grp: 'odrv', cmd: 'p 0 0 0 0',  desc: t('cmd.p') },
+    { grp: 'odrv', cmd: 'v 0 0 0',    desc: t('cmd.v') },
+    { grp: 'odrv', cmd: 'c 0 0',      desc: t('cmd.c') },
   )
 
   // ── 2. Propriétés du schéma — auto-générées (r <path> + w <path> <val>) ─────
@@ -44,106 +48,106 @@ export function buildCommandList(): CmdItem[] {
         if (!f.path || seen.has(f.path)) continue
         seen.add(f.path)
         const leaf = f.name.split('.').pop() || f.name
-        items.push({ grp: 'paths', cmd: 'r ' + f.path, desc: 'Read ' + leaf })
-        items.push({ grp: 'paths', cmd: 'w ' + f.path + ' ', desc: 'Write ' + leaf })
+        items.push({ grp: 'paths', cmd: 'r ' + f.path, desc: t('cmd.read') + ' ' + leaf })
+        items.push({ grp: 'paths', cmd: 'w ' + f.path + ' ', desc: t('cmd.write') + ' ' + leaf })
       }
     }
   }
 
   // ── 3. OpenFFBoard cmdparser — miroir de cmd_table.cpp ──────────────────────
-  const offb = (cmd: string, desc: string) => items.push({ grp: 'offb', cmd, desc })
+  const offb = (cmd: string, key: TKey) => items.push({ grp: 'offb', cmd, desc: t(key) })
   // sys.*
-  offb('sys.lsmain?',    'Liste les mainclasses disponibles')
-  offb('sys.lsactive?',  'Mainclass active')
-  offb('sys.heapfree?',  'Heap libre (FreeRTOS)')
-  offb('sys.cmdinfo?',   'Info statique de la commande')
-  offb('sys.temp?',      'Température interne du MCU')
-  offb('sys.swver?',     'Version du firmware')
-  offb('sys.hwtype?',    'Type de hardware')
-  offb('sys.uid?',       'Unique ID du STM32')
-  offb('sys.signature?', 'Signature word')
-  offb('sys.debug?',     'Dump des variables debug')
-  offb('sys.main?',      'ID de la mainclass courante')
-  offb('sys.devid?',     'Device + revision ID')
-  offb('sys.errors?',    'Liste des erreurs')
-  offb('sys.errorsclr!', 'Efface les erreurs')
-  offb('sys.format!',    'Erase config (factory reset)')
-  offb('sys.flashdump?', 'Dump des vars flash (NVM)')
-  offb('sys.vint?',      'VBUS interne en mV')
-  offb('sys.vext?',      'Tension externe')
-  offb('sys.heap?',      'Heap libre')
-  offb('sys.save!',      'Persiste la config en flash')
-  offb('sys.savestat?',  'Diagnostic du dernier save')
-  offb('sys.eetest!',    'Test bas-niveau EEPROM')
-  offb('sys.eedump?',    'Dump raw EEPROM')
-  offb('sys.eeformat!',  '⚠ Force format EEPROM (escape hatch)')
-  offb('sys.vbusdiv',    'Diviseur de tension VBUS (1-50, défaut 19 MKS)')
-  offb('sys.reboot!',    'Reset du chip')
-  offb('sys.uptime?',    'Uptime en ms')
-  offb('sys.ping?',      'Ping (réponse attendue : OK)')
-  offb('sys.fxtest?',    'Test du ratio d\'effets')
+  offb('sys.lsmain?',    'cmd.sys_lsmain')
+  offb('sys.lsactive?',  'cmd.sys_lsactive')
+  offb('sys.heapfree?',  'cmd.sys_heapfree')
+  offb('sys.cmdinfo?',   'cmd.sys_cmdinfo')
+  offb('sys.temp?',      'cmd.sys_temp')
+  offb('sys.swver?',     'cmd.sys_swver')
+  offb('sys.hwtype?',    'cmd.sys_hwtype')
+  offb('sys.uid?',       'cmd.sys_uid')
+  offb('sys.signature?', 'cmd.sys_signature')
+  offb('sys.debug?',     'cmd.sys_debug')
+  offb('sys.main?',      'cmd.sys_main')
+  offb('sys.devid?',     'cmd.sys_devid')
+  offb('sys.errors?',    'cmd.sys_errors')
+  offb('sys.errorsclr!', 'cmd.sys_errorsclr')
+  offb('sys.format!',    'cmd.sys_format')
+  offb('sys.flashdump?', 'cmd.sys_flashdump')
+  offb('sys.vint?',      'cmd.sys_vint')
+  offb('sys.vext?',      'cmd.sys_vext')
+  offb('sys.heap?',      'cmd.sys_heap')
+  offb('sys.save!',      'cmd.sys_save')
+  offb('sys.savestat?',  'cmd.sys_savestat')
+  offb('sys.eetest!',    'cmd.sys_eetest')
+  offb('sys.eedump?',    'cmd.sys_eedump')
+  offb('sys.eeformat!',  'cmd.sys_eeformat')
+  offb('sys.vbusdiv',    'cmd.sys_vbusdiv')
+  offb('sys.reboot!',    'cmd.sys_reboot')
+  offb('sys.uptime?',    'cmd.sys_uptime')
+  offb('sys.ping?',      'cmd.sys_ping')
+  offb('sys.fxtest?',    'cmd.sys_fxtest')
   // main.*
-  offb('main.id?',        'ID de la FFB Wheel')
-  offb('main.hidrate?',   'Taux de HID input report')
-  offb('main.cfrate?',    'Taux de mise à jour constant-force')
-  offb('main.ffbactive?', 'État FFB (actif/inactif)')
-  offb('main.hidsendspd', 'Vitesse d\'envoi HID')
-  offb('main.errors?',    'Erreurs de la mainclass')
-  offb('main.lsbtn?',     'Liste des boutons configurés')
-  offb('main.btntypes?',  'Types de boutons disponibles')
-  offb('main.lsain?',     'Liste des entrées analogiques')
-  offb('main.aintypes?',  'Types d\'entrées analogiques')
+  offb('main.id?',        'cmd.main_id')
+  offb('main.hidrate?',   'cmd.main_hidrate')
+  offb('main.cfrate?',    'cmd.main_cfrate')
+  offb('main.ffbactive?', 'cmd.main_ffbactive')
+  offb('main.hidsendspd', 'cmd.main_hidsendspd')
+  offb('main.errors?',    'cmd.main_errors')
+  offb('main.lsbtn?',     'cmd.main_lsbtn')
+  offb('main.btntypes?',  'cmd.main_btntypes')
+  offb('main.lsain?',     'cmd.main_lsain')
+  offb('main.aintypes?',  'cmd.main_aintypes')
   // axis.*
-  offb('axis.range',         'Range du volant en counts')
-  offb('axis.maxtorque',     'Maxtorque (limite finale du FFB)')
-  offb('axis.fxratio',       'Effect ratio (0-255)')
-  offb('axis.invert',        '0/1 — inverse la position HID')
-  offb('axis.ffbinvert',     '0/1 — inverse le couple FFB')
-  offb('axis.drvtype?',      'Type de driver courant')
-  offb('axis.enctype?',      'Type d\'encodeur courant')
-  offb('axis.pos?',          'Position courante en counts')
-  offb('axis.idlespring',    'Mola jeu éteint / centrage (0-255)')
-  offb('axis.axisdamper',    'Damper toujours actif (0-255)')
-  offb('axis.axisinertia',   'Inertia toujours active (0-255)')
-  offb('axis.axisfriction',  'Friction toujours active (0-255)')
-  offb('axis.esgain',        'End-stop — force du ressort (0-255)')
-  offb('axis.esdamp',        'End-stop — amortissement (0-255)')
-  offb('axis.maxtorquerate', 'Slew limit (counts/ms, 0=off)')
-  offb('axis.expo',          'Courbe exponentielle (-32767..32767)')
-  offb('axis.exposcale',     'Diviseur de l\'expo (1-255)')
-  offb('axis.zeroenc!',      'Remet à zéro la position courante')
-  offb('axis.anticogcal!',   'Lance l\'anticogging calibration')
-  offb('axis.curtorque?',    'Live : couple actuel')
-  offb('axis.curpos?',       'Live : position actuelle')
-  offb('axis.curspd?',       'Live : vitesse actuelle')
-  offb('axis.curaccel?',     'Live : accélération actuelle')
+  offb('axis.range',         'cmd.axis_range')
+  offb('axis.maxtorque',     'cmd.axis_maxtorque')
+  offb('axis.fxratio',       'cmd.axis_fxratio')
+  offb('axis.invert',        'cmd.axis_invert')
+  offb('axis.ffbinvert',     'cmd.axis_ffbinvert')
+  offb('axis.drvtype?',      'cmd.axis_drvtype')
+  offb('axis.enctype?',      'cmd.axis_enctype')
+  offb('axis.pos?',          'cmd.axis_pos')
+  offb('axis.idlespring',    'cmd.axis_idlespring')
+  offb('axis.axisdamper',    'cmd.axis_axisdamper')
+  offb('axis.axisinertia',   'cmd.axis_axisinertia')
+  offb('axis.axisfriction',  'cmd.axis_axisfriction')
+  offb('axis.esgain',        'cmd.axis_esgain')
+  offb('axis.esdamp',        'cmd.axis_esdamp')
+  offb('axis.maxtorquerate', 'cmd.axis_maxtorquerate')
+  offb('axis.expo',          'cmd.axis_expo')
+  offb('axis.exposcale',     'cmd.axis_exposcale')
+  offb('axis.zeroenc!',      'cmd.axis_zeroenc')
+  offb('axis.anticogcal!',   'cmd.axis_anticogcal')
+  offb('axis.curtorque?',    'cmd.axis_curtorque')
+  offb('axis.curpos?',       'cmd.axis_curpos')
+  offb('axis.curspd?',       'cmd.axis_curspd')
+  offb('axis.curaccel?',     'cmd.axis_curaccel')
   // fx.*
-  offb('fx.spring',       'Spring gain (0-255)')
-  offb('fx.damper',       'Damper gain (0-255)')
-  offb('fx.friction',     'Friction gain (0-255)')
-  offb('fx.inertia',      'Inertia gain (0-255)')
-  offb('fx.master',       'Master gain (global_gain)')
-  offb('fx.filterCfFreq', 'Filtre Constant Force — fréquence')
-  offb('fx.filterCfQ',    'Filtre Constant Force — Q')
-  offb('fx.filterFrFreq', 'Filtre Friction — fréquence')
-  offb('fx.filterFrQ',    'Filtre Friction — Q')
-  offb('fx.filterDaFreq', 'Filtre Damper — fréquence')
-  offb('fx.filterDaQ',    'Filtre Damper — Q')
-  offb('fx.filterInFreq', 'Filtre Inertia — fréquence')
-  offb('fx.filterInQ',    'Filtre Inertia — Q')
+  offb('fx.spring',       'cmd.fx_spring')
+  offb('fx.damper',       'cmd.fx_damper')
+  offb('fx.friction',     'cmd.fx_friction')
+  offb('fx.inertia',      'cmd.fx_inertia')
+  offb('fx.master',       'cmd.fx_master')
+  offb('fx.filterCfFreq', 'cmd.fx_cf_freq')
+  offb('fx.filterCfQ',    'cmd.fx_cf_q')
+  offb('fx.filterFrFreq', 'cmd.fx_fr_freq')
+  offb('fx.filterFrQ',    'cmd.fx_fr_q')
+  offb('fx.filterDaFreq', 'cmd.fx_da_freq')
+  offb('fx.filterDaQ',    'cmd.fx_da_q')
+  offb('fx.filterInFreq', 'cmd.fx_in_freq')
+  offb('fx.filterInQ',    'cmd.fx_in_q')
   // gpio.*
-  offb('gpio.mode',   'GPIO mode (0=off / 1=button / 2=axis)')
-  offb('gpio.idx',    'GPIO index (0-63 bouton, 0-3 axe)')
-  offb('gpio.invert', 'GPIO invert (0/1)')
-  offb('gpio.amin',   'GPIO axis min raw (0-4095)')
-  offb('gpio.amax',   'GPIO axis max raw (0-4095)')
-  offb('gpio.cur?',   'GPIO raw courant (debug/UI)')
+  offb('gpio.mode',   'cmd.gpio_mode')
+  offb('gpio.idx',    'cmd.gpio_idx')
+  offb('gpio.invert', 'cmd.gpio_invert')
+  offb('gpio.amin',   'cmd.gpio_amin')
+  offb('gpio.amax',   'cmd.gpio_amax')
+  offb('gpio.cur?',   'cmd.gpio_cur')
   // odrv.*
-  offb('odrv.vbus?',      'VBUS courant (volts)')
-  offb('odrv.connected?', 'État de connexion')
-  offb('odrv.canid',      'CAN ID')
-  offb('odrv.canspd',     'CAN speed')
-  offb('odrv.maxtorque',  'Maxtorque limite finale du hw')
+  offb('odrv.vbus?',      'cmd.odrv_vbus')
+  offb('odrv.connected?', 'cmd.odrv_connected')
+  offb('odrv.canid',      'cmd.odrv_canid')
+  offb('odrv.canspd',     'cmd.odrv_canspd')
+  offb('odrv.maxtorque',  'cmd.odrv_maxtorque')
 
   return items
 }
