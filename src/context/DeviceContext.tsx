@@ -197,7 +197,9 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
         // Polling de fond : log:false pour ne pas inonder la Console.
         const vb = await readProp('vbus_voltage', 'odrv', { log: false })
         const iq = await readProp('axis0.motor.current_control.Iq_measured', 'odrv', { log: false })
-        const pos = await readProp('axis0.encoder.pos_estimate', 'odrv', { log: false })
+        // Position HID en degrés (OpenFFBoard) : respecte zeroenc + axis.invert,
+        // donc le visuel du volant est toujours aligné avec le jeu / joy.cpl.
+        const pos = await readProp('axis.curpos', 'offb', { log: false })
         const vel = await readProp('axis0.encoder.vel_estimate', 'odrv', { log: false })
         if (!cancelled) {
           const iqNum = toNum(iq, 0)
@@ -205,7 +207,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
             torque: iqNum * 0.087,
             vbus: toNum(vb, 48),
             iq: iqNum,
-            position: toNum(pos, 0) * 360,
+            position: toNum(pos, 0),
             velocity: toNum(vel, 0),
             ibrake: 0, temperature: 42, simulated: false,
           })

@@ -49,10 +49,10 @@ export function Dashboard() {
     if (connected) liveApply('masterGain', () => applyWheelField('masterGain', v))
   }
 
-  // Wheel rotation visual: follow HID direction (axis.invert flips the sign
-  // of the position reported to the game, so the on-screen wheel must match).
-  const dir = wheelConfig.invert ? -1 : 1
-  const hidPos = live.position * dir
+  // live.position vient de axis.curpos? (degrés HID) : zeroenc et axis.invert
+  // sont déjà appliqués par le firmware. Signe inversé car la convention curpos
+  // est opposée à la rotation CSS (positif = horaire).
+  const hidPos = -live.position
   const halfRange = angle / 2
   const clamped = Math.max(-halfRange, Math.min(halfRange, hidPos))
   const posPct = 50 + (clamped / angle) * 100   // 0..100 across the bar
@@ -63,7 +63,7 @@ export function Dashboard() {
 
   const center = async () => {
     if (!connected) { toast(t('common.connect_first'), 'err'); return }
-    await window.ow.query('axis.zeroenc!')   // OpenFFBoard zero-encoder action
+    await window.ow.query('axis.zeroenc!')   // remet à zéro la position HID (et donc le visuel)
     toast(t('dash.centered'))
   }
 

@@ -40,7 +40,7 @@ reflects what's actually flashed, not hard-coded defaults.
 | **Status** tab — decoded error registers (odrv/axis/motor/encoder/controller) + state-machine & NVM actions | ✅ working |
 | **Profiles** — capture the FFB + Filters config into a named profile, apply it back, rename, delete | ✅ working |
 | **Console** — ODrive/OpenFFBoard ASCII, logs writes + on-demand reads, *Available commands* picker, Clear | ✅ working |
-| **DFU flash** — WebUSB DfuSe (reboot DFU → detect bootloader → pick .bin → flash), preserves FFB EEPROM (S1/S2) | ✅ implemented (not tested on hardware) |
+| **DFU flash** — WebUSB DfuSe (reboot DFU → detect bootloader → pick .bin → flash), preserves FFB EEPROM (S1/S2) | ✅ working (tested on hardware) |
 | Serial transport — single-flight FIFO queue + resync guard (mirrors the reference tool, avoids CDC desync) | ✅ working |
 | **Sidebar** — drag-to-reorder and hide/show tabs, persisted (Settings → *Menu latéral*) | ✅ working |
 | **Languages** — FR / EN / PT-BR switcher in Settings, persisted | ✅ infra + key pages (Dashboard, FFB, Filters, Settings); other pages still FR |
