@@ -27,6 +27,7 @@ const api = {
 
   // Profils / auto-switch
   pickGameExe: () => ipcRenderer.invoke('app:pickGameExe'),
+  pickIconFile: () => ipcRenderer.invoke('app:pickIconFile'),
   listProcesses: () => ipcRenderer.invoke('app:listProcesses'),
 
   // Events

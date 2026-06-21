@@ -120,7 +120,7 @@ export const pt: Partial<Record<TKey, string>> = {
   'prof.capture_note': 'Os ajustes FFB + Filtros atuais da placa serão capturados neste perfil.',
   'prof.create': 'Criar',
   'prof.save': 'Salvar',
-  'prof.summary': 'torque {torque} Nm · {range}° · master {master}%',
+  'prof.summary': 'torque {torque} Nm · {range}° · fx ratio {fxRatio}%',
   'prof.summary_none': 'sem ajustes salvos',
   'prof.connect_capture': 'Conecte a placa para capturar os ajustes',
   'prof.name_required': 'Dê um nome ao perfil',
@@ -131,6 +131,8 @@ export const pt: Partial<Record<TKey, string>> = {
   'prof.no_settings': 'Este perfil não tem ajustes salvos',
   'prof.applied': 'Perfil “{name}” aplicado — Salve (FFB) para persistir',
   'prof.pick_exe': 'Importar do .exe',
+  'prof.pick_icon': 'Ícone (arquivo .ico)',
+  'prof.icon_reset': 'Ícone padrão',
   'prof.autoswitch_log': 'Auto-switch: perfil “{name}” ({exe})',
 
   // Status

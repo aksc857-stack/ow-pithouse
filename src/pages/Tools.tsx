@@ -64,6 +64,14 @@ export function Profiles() {
     })
   }
 
+  // Choisir une icône depuis un fichier (.ico/png/jpg) — jeux sans icône dans l'exe.
+  const pickIcon = async () => {
+    if (!form) return
+    const res = await window.ow?.pickIconFile()
+    if (!res) return
+    setForm({ ...form, iconImage: res.icon })
+  }
+
   const submit = async () => {
     if (!form) return
     const name = form.name.trim()
@@ -123,7 +131,7 @@ export function Profiles() {
 
   const summary = (p: GameProfile) =>
     p.settings
-      ? t('prof.summary', { torque: p.settings.wheel.maxTorque, range: p.settings.wheel.range, master: p.settings.wheel.masterGain })
+      ? t('prof.summary', { torque: p.settings.wheel.maxTorque, range: p.settings.wheel.range, fxRatio: p.settings.wheel.fxRatio })
       : t('prof.summary_none')
 
   return (
@@ -221,6 +229,16 @@ export function Profiles() {
                 <button className="btn btn--sm" onClick={pickExe} disabled={busy} title={t('prof.pick_exe')}>
                   <i className="ti ti-folder-search" /> {t('prof.pick_exe')}
                 </button>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+                <button className="btn btn--sm" onClick={pickIcon} disabled={busy} title={t('prof.pick_icon')}>
+                  <i className="ti ti-photo" /> {t('prof.pick_icon')}
+                </button>
+                {form.iconImage && (
+                  <button className="btn btn--sm" onClick={() => setForm({ ...form, iconImage: undefined })} disabled={busy} title={t('prof.icon_reset')}>
+                    <i className="ti ti-x" /> {t('prof.icon_reset')}
+                  </button>
+                )}
               </div>
             </div>
             {!form.id && (

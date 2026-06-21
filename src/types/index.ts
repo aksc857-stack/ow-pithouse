@@ -32,6 +32,7 @@ export interface OwApi {
 
   // Profils / auto-switch
   pickGameExe: () => Promise<{ path: string; name: string; icon: string } | null>
+  pickIconFile: () => Promise<{ path: string; name: string; icon: string } | null>
   listProcesses: () => Promise<string[]>   // noms d'exécutables en cours (minuscules)
 
   onSerialData: (cb: (line: string) => void) => () => void
