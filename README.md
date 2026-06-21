@@ -49,9 +49,6 @@ link — see [How device communication works](#how-device-communication-works).)
 
 ## Screenshots
 
-> Images live in [`docs/screenshots/`](docs/screenshots). Save your captures there
-> with the filenames below and they'll appear here automatically.
-
 ### Dashboard
 
 ![Dashboard — live wheel visual, profiles card, FFB intensity & output torque](docs/screenshots/dashboard.png)
