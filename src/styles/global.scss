@@ -126,6 +126,8 @@ input, select { font-family: inherit; }
     cursor: pointer;
     text-align: left;
     transition: border-color 0.15s, background 0.15s;
+    outline: none;                          // pas d'anneau de focus (rectangle accent)
+    &:focus, &:focus-visible { outline: none; }
     &:hover, &.open { border-color: var(--accent); background: var(--bg-hover); }
 
     &-dot {
