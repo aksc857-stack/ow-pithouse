@@ -84,7 +84,7 @@ link — see [How device communication works](#how-device-communication-works).)
 | **DFU flash** — WebUSB DfuSe (reboot DFU → detect bootloader → pick .bin → flash), preserves FFB EEPROM (S1/S2) | ✅ working (tested on hardware) |
 | Serial transport — single-flight FIFO queue + resync guard (mirrors the reference tool, avoids CDC desync) | ✅ working |
 | **Sidebar** — drag-to-reorder and hide/show tabs, persisted (Settings → *Menu latéral*) | ✅ working |
-| **Languages** — FR / EN / PT-BR switcher in Settings, persisted | 🚧 UI translated (Dashboard, FFB, Filters, Settings, Profiles, Status, Console, DFU, command list, decoded errors); only the ODrive tab + schema remain FR |
+| **Languages** — FR / EN / PT-BR switcher in Settings, persisted | 🚧 UI translated (Dashboard, FFB, Filters, Settings, Profiles, Status, Console, DFU, command list, decoded errors) |
 | **Overlay** (in-game telemetry window) | 🚧 experimental |
 | Saving — live edits write to RAM instantly; **Save** persists FFB EEPROM (`sys.save!`) + ODrive NVM (`ss`) | ✅ working |
 
