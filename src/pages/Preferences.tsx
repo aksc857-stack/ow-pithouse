@@ -59,7 +59,7 @@ function NavCustomizer() {
   }
 
   return (
-    <div className="card" style={{ marginTop: 16 }}>
+    <div className="card">
       <div className="card__head">
         <i className="ti ti-menu-2" />{t('set.menu')}
         <button className="btn btn--sm" style={{ marginLeft: 'auto' }} onClick={reset}>
@@ -116,18 +116,21 @@ function NavCustomizer() {
 // ── Settings (container à onglets : Réglages + Flash) ─────────────────────────
 export function Settings() {
   const { t } = useI18n()
-  const [tab, setTab] = useState<'settings' | 'flash'>('settings')
+  const [tab, setTab] = useState<'settings' | 'sidebar' | 'flash'>('settings')
   return (
     <>
       <div className="odrive-tabs">
         <button className={`odrive-tab ${tab === 'settings' ? 'active' : ''}`} onClick={() => setTab('settings')}>
           {t('set.tab_settings')}
         </button>
+        <button className={`odrive-tab ${tab === 'sidebar' ? 'active' : ''}`} onClick={() => setTab('sidebar')}>
+          {t('set.menu')}
+        </button>
         <button className={`odrive-tab ${tab === 'flash' ? 'active' : ''}`} onClick={() => setTab('flash')}>
           {t('set.tab_flash')}
         </button>
       </div>
-      {tab === 'settings' ? <SettingsForm /> : <Dfu />}
+      {tab === 'settings' ? <SettingsForm /> : tab === 'sidebar' ? <NavCustomizer /> : <Dfu />}
     </>
   )
 }
@@ -229,8 +232,6 @@ function SettingsForm() {
           </div>
         </div>
       </div>
-
-      <NavCustomizer />
     </>
   )
 }
