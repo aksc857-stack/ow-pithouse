@@ -1,8 +1,8 @@
 {
   "name": "ow-pithouse",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Odrive Wheel Pit House — configuration tool for MKS XDrive Mini / ODESC V4.2 sim racing wheels",
-  "author": "Your Name",
+  "author": "Steve",
   "license": "GPL-3.0",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -72,7 +72,11 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "OW-Pithouse-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "OW-Pithouse-Portable-${version}.${ext}"
     }
   }
 }
