@@ -1,12 +1,14 @@
-import { useState } from 'react'
 import { useDevice } from '@/context/DeviceContext'
+import { usePersistentTab } from '@/hooks/usePersistentTab'
 import { SchemaSectionView } from '@/components/SchemaSection'
 import { toast } from '@/components/ui'
 import { ODRIVE_SECTIONS } from '@/lib/odriveSchema'
 
+const ODRIVE_TAB_IDS = ODRIVE_SECTIONS.map((s) => s.id)
+
 export function Odrive() {
   const { connected, sendCommand } = useDevice()
-  const [active, setActive] = useState(ODRIVE_SECTIONS[0].id)
+  const [active, setActive] = usePersistentTab('odrive', ODRIVE_TAB_IDS, ODRIVE_SECTIONS[0].id)
   const section = ODRIVE_SECTIONS.find((s) => s.id === active)!
 
   const saveNvm = async () => {

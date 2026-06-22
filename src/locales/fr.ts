@@ -16,7 +16,7 @@ export const fr = {
   'nav.ffb': 'FFB',
   'nav.filters': 'Filtres',
   'nav.profiles': 'Profils',
-  'nav.status': 'Status',
+  'nav.status': 'Outils',
   'nav.console': 'Console',
   'nav.themes': 'Thème',
   'nav.settings': 'Réglages',

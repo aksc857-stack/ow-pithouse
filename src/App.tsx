@@ -5,7 +5,7 @@ import { ToastContainer } from '@/components/ui'
 import { Dashboard } from '@/pages/Dashboard'
 import { FFB, Filters } from '@/pages/Config'
 import { Odrive } from '@/pages/Odrive'
-import { Profiles, Status, Console } from '@/pages/Tools'
+import { Profiles, Status } from '@/pages/Tools'
 import { Themes, Settings } from '@/pages/Preferences'
 import { useAutoProfile } from '@/hooks/useAutoProfile'
 import type { PageId } from '@/types'
@@ -17,7 +17,6 @@ const PAGES: Record<PageId, () => JSX.Element> = {
   filters: Filters,
   profiles: Profiles,
   status: Status,
-  console: Console,
   themes: Themes,
   settings: Settings,
 }

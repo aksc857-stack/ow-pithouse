@@ -109,5 +109,5 @@ export interface LiveData {
 
 export type PageId =
   | 'dashboard' | 'odrive' | 'ffb' | 'filters'
-  | 'profiles' | 'status' | 'console'
+  | 'profiles' | 'status'
   | 'themes' | 'settings'

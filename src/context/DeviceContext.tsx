@@ -21,7 +21,9 @@ interface DeviceContextValue {
   log: { type: 'tx' | 'rx' | 'info' | 'err'; text: string; ts: number }[]
   refreshPorts: () => Promise<void>
   connect: (port: string) => Promise<void>
-  disconnect: () => Promise<void>
+  /** suspendAuto (défaut true) : suspend l'auto-connexion (déconnexion manuelle).
+   *  Passer false pour les déconnexions internes (ex. flux DFU). */
+  disconnect: (suspendAuto?: boolean) => Promise<void>
   sendCommand: (cmd: string) => Promise<string>
   reloadFromBoard: () => Promise<void>
   appendLog: (type: 'tx' | 'rx' | 'info' | 'err', text: string) => void
@@ -48,6 +50,11 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
   const t0 = useRef(Date.now())
   const connectedRef = useRef(false)
   const autoConnectingRef = useRef(false)
+  // Suspension (en mémoire) de l'auto-connexion après une déconnexion MANUELLE :
+  // évite la reconnexion immédiate sans toucher au réglage persisté (le toggle
+  // reste ON). Levée au prochain redémarrage (ref non persistée) ou à la prochaine
+  // connexion manuelle.
+  const autoSuspendRef = useRef(false)
   // Compteur de pause du polling : >0 = une page lit, le polling de fond attend
   // (réduit la latence des « Relire »). Compteur pour gérer les lectures imbriquées.
   const pollPauseRef = useRef(0)
@@ -95,7 +102,7 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 
       // Auto-connect: if enabled, not connected, and the board is present.
       const autoEnabled = localStorage.getItem('ow_autoconnect') !== 'off'
-      if (autoEnabled && !connectedRef.current && !autoConnectingRef.current) {
+      if (autoEnabled && !autoSuspendRef.current && !connectedRef.current && !autoConnectingRef.current) {
         const board = findBoardPort(list)
         if (board) {
           autoConnectingRef.current = true
@@ -133,6 +140,8 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
 
   const connect = useCallback(async (p: string) => {
     if (!window.ow) return
+    // Connexion manuelle : ré-arme l'auto-connexion (lève une éventuelle suspension).
+    autoSuspendRef.current = false
     try {
       await window.ow.connect(p)
       appendLog('info', `Connecté à ${p}`)
@@ -141,8 +150,12 @@ export function DeviceProvider({ children }: { children: ReactNode }) {
     }
   }, [appendLog])
 
-  const disconnect = useCallback(async () => {
+  const disconnect = useCallback(async (suspendAuto = true) => {
     if (!window.ow) return
+    // Déconnexion manuelle : suspend l'auto-connexion jusqu'à la prochaine
+    // connexion manuelle ou un redémarrage (le toggle reste ON, rien n'est persisté).
+    // Le flux DFU passe false pour permettre la reconnexion auto après le flash.
+    if (suspendAuto) autoSuspendRef.current = true
     await window.ow.disconnect()
   }, [])
 
