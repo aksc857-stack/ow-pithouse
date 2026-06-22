@@ -61,7 +61,7 @@ link — see [How device communication works](#how-device-communication-works).)
 
 ![Filters tab — per-effect biquad low-pass (frequency + Q), live-applied](docs/screenshots/filters.png)
 
-### Tools — Status, Console & DFU
+### Tools — Status
 
 ![Decoded error registers, dual-protocol serial console and DFU flashing](docs/screenshots/tools.png)
 
