@@ -10,10 +10,9 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', icon: 'ti-layout-dashboard', label: 'Dash' },
   { id: 'ffb',       icon: 'ti-steering-wheel',   label: 'FFB' },
   { id: 'filters',   icon: 'ti-filter',           label: 'Filtres' },
-  { id: 'odrive',    icon: 'ti-engine',           label: 'ODrive' },
   { id: 'profiles',  icon: 'ti-bookmarks',        label: 'Profils' },
-  { id: 'status',    icon: 'ti-activity',         label: 'Status' },
-  { id: 'console',   icon: 'ti-terminal-2',       label: 'Console' },
+  { id: 'odrive',    icon: 'ti-engine',           label: 'ODrive' },
+  { id: 'status',    icon: 'ti-activity',         label: 'Outils' },
 ]
 
 const DEFAULT_ORDER = NAV_ITEMS.map((i) => i.id)

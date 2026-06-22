@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useDevice } from '@/context/DeviceContext'
 import { useI18n } from '@/context/I18nContext'
+import { usePersistentTab } from '@/hooks/usePersistentTab'
 import { toast } from '@/components/ui'
 import { readProp } from '@/lib/odrive'
 import { ERROR_DEFS, decodeError, toHex } from '@/lib/odriveErrors'
@@ -260,7 +261,26 @@ export function Profiles() {
 }
 
 // ── Status (Errors décodées + Actions state machine / NVM) ────────────────────
+// Menu Status à onglets : Status (erreurs + actions) + Console.
 export function Status() {
+  const { t } = useI18n()
+  const [tab, setTab] = usePersistentTab('status', ['status', 'console'] as const, 'status')
+  return (
+    <>
+      <div className="odrive-tabs">
+        <button className={`odrive-tab ${tab === 'status' ? 'active' : ''}`} onClick={() => setTab('status')}>
+          {t('status.title')}
+        </button>
+        <button className={`odrive-tab ${tab === 'console' ? 'active' : ''}`} onClick={() => setTab('console')}>
+          {t('nav.console')}
+        </button>
+      </div>
+      {tab === 'status' ? <StatusPanel /> : <Console />}
+    </>
+  )
+}
+
+function StatusPanel() {
   const { connected, appendLog, pausePolling } = useDevice()
   const { t } = useI18n()
   const [errs, setErrs] = useState<Record<string, number | null>>({})
@@ -508,7 +528,7 @@ export function Dfu() {
     if (!connected) { toast(t('common.connect_first'), 'err'); return }
     log(t('dfu.log_send_sd'))
     await window.ow?.odriveRebootDfu()
-    try { await disconnect() } catch { /* le port disparaît de toute façon */ }
+    try { await disconnect(false) } catch { /* le port disparaît de toute façon */ }
     log(t('dfu.log_sent'), 'ok')
     toast(t('dfu.toast_reboot'))
   }

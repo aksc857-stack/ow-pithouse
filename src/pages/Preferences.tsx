@@ -6,6 +6,7 @@ import { useI18n } from '@/context/I18nContext'
 import { LANGS, type Lang, type TKey } from '@/locales'
 import { Toggle, toast } from '@/components/ui'
 import { Dfu } from '@/pages/Tools'
+import { usePersistentTab } from '@/hooks/usePersistentTab'
 import { exportConfig, importConfig } from '@/lib/configIo'
 
 // ── Themes ────────────────────────────────────────────────────────────────────
@@ -117,7 +118,7 @@ function NavCustomizer() {
 // ── Settings (container à onglets : Réglages + Flash) ─────────────────────────
 export function Settings() {
   const { t } = useI18n()
-  const [tab, setTab] = useState<'settings' | 'sidebar' | 'config' | 'flash'>('settings')
+  const [tab, setTab] = usePersistentTab('settings', ['settings', 'sidebar', 'config', 'flash'] as const, 'settings')
   return (
     <>
       <div className="odrive-tabs">
@@ -302,7 +303,7 @@ function SettingsForm() {
             </select>
           </div>
           {connected ? (
-            <button className="btn btn--danger" style={{ width: '100%' }} onClick={disconnect}>
+            <button className="btn btn--danger" style={{ width: '100%' }} onClick={() => disconnect()}>
               <i className="ti ti-plug-off" /> {t('set.disconnect')}
             </button>
           ) : (

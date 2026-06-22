@@ -15,7 +15,7 @@ export const pt: Partial<Record<TKey, string>> = {
   'nav.ffb': 'FFB',
   'nav.filters': 'Filtros',
   'nav.profiles': 'Perfis',
-  'nav.status': 'Status',
+  'nav.status': 'Ferramentas',
   'nav.console': 'Console',
   'nav.themes': 'Tema',
   'nav.settings': 'Ajustes',
