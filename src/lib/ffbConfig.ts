@@ -196,13 +196,15 @@ export async function applyFilter(path: string, value: number): Promise<void> {
 }
 
 /** Capturer l'état FFB + filtres courant de la carte dans un ProfileSettings.
- *  L'appelant fournit le WheelConfig courant et gère la pause du polling. */
+ *  Tout est relu depuis la carte (roue incl. invert/ffbInvert, effets, filtres) ;
+ *  le WheelConfig passé sert de repli si une lecture échoue. L'appelant gère la pause du polling. */
 export async function captureProfileSettings(wheel: WheelConfig): Promise<ProfileSettings> {
+  const freshWheel = await readWheelConfig(wheel)
   const seed = EFFECT_DEFS.map((d) => ({ name: d.name, path: d.path, gain: d.defaultGain }))
   const eff = await readEffectsConfig(seed)
   const filters = await readFiltersConfig(defaultFilterValues())
   return {
-    wheel,
+    wheel: freshWheel,
     effects: Object.fromEntries(eff.map((e) => [e.path, e.gain])),
     filters,
   }

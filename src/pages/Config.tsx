@@ -5,6 +5,7 @@ import { useI18n } from '@/context/I18nContext'
 import { Slider, toast } from '@/components/ui'
 import { writeWheelConfig, applyWheelField, readEffectsConfig, applyEffectGain, EFFECT_DEFS,
   FILTER_DEFS, defaultFilterValues, readFiltersConfig, applyFilter, writeFiltersConfig, type FilterValues } from '@/lib/ffbConfig'
+import { useTorqueLimit } from '@/hooks/useTorqueLimit'
 import type { EffectConfig, WheelConfig } from '@/types'
 
 const DEFAULT_EFFECTS: EffectConfig[] = EFFECT_DEFS.map((d) => ({
@@ -31,7 +32,10 @@ export function FFB() {
     const resume = pausePolling()
     try { setEffects(await readEffectsConfig(effects)) } catch { /* silencieux */ } finally { resume() }
   }
-  useEffect(() => { if (connected) reloadEffects() }, [connected])
+  useEffect(() => { if (connected) reloadEffects() }, [connected])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Limite physique de couple (hook partagé) : plafond du curseur + écrêtage + tooltip.
+  const { effLimitTorque: sliderMaxTorque, limitTooltip, reloadLimits } = useTorqueLimit()
 
   // Gain d'effet : état UI immédiat + écriture live debouncée (RAM).
   const setGain = (i: number, gain: number) => {
@@ -53,7 +57,7 @@ export function FFB() {
     }
   }
 
-  const reload = () => { reloadFromBoard(); reloadEffects() }
+  const reload = () => { reloadFromBoard(); reloadEffects(); reloadLimits() }
 
   return (
     <>
@@ -78,7 +82,7 @@ export function FFB() {
         <div className="card">
           <div className="card__head"><i className="ti ti-steering-wheel" />{t('ffb.card_wheel')}</div>
           <Slider label={t('ffb.range')} value={wheelConfig.range} min={90} max={1440} step={90} unit="°" onChange={(v) => update('range', v)} />
-          <Slider label={t('ffb.max_torque')} value={wheelConfig.maxTorque} min={0.5} max={12} step={0.1} format={(v) => `${v.toFixed(1)} Nm`} onChange={(v) => update('maxTorque', v)} />
+          <Slider label={t('ffb.max_torque')} value={wheelConfig.maxTorque} min={0.5} max={sliderMaxTorque} step={0.1} format={(v) => `${v.toFixed(1)} Nm`} onChange={(v) => update('maxTorque', v)} hint={limitTooltip} />
           <Slider label={t('ffb.fx_ratio')} value={wheelConfig.fxRatio} min={0} max={100} unit="%" onChange={(v) => update('fxRatio', v)} />
         </div>
         <div className="card">

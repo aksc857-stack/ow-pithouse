@@ -5,6 +5,7 @@ import { useI18n } from '@/context/I18nContext'
 import { toast } from '@/components/ui'
 import { writeProp } from '@/lib/odrive'
 import { applyWheelField, applyProfileSettings, captureProfileSettings } from '@/lib/ffbConfig'
+import { useTorqueLimit } from '@/hooks/useTorqueLimit'
 import { loadProfiles, saveProfiles, PROFILES_EVENT } from '@/lib/profiles'
 import type { GameProfile } from '@/types'
 import wheelImg from '@/assets/wheel.png'
@@ -15,6 +16,8 @@ export function Dashboard() {
   const { live, wheelConfig, setWheelConfig, connected, port, pausePolling } = useDevice()
   const { t } = useI18n()
   const liveApply = useLiveApply()
+  // Limite physique de couple (hook partagé) : plafond du curseur + écrêtage + tooltip.
+  const { effLimitTorque, limitTooltip } = useTorqueLimit()
 
   // Profils enregistrés (capturés ici ou dans le menu Profils — même localStorage).
   const [profiles, setProfiles] = useState<GameProfile[]>(loadProfiles)
@@ -99,10 +102,10 @@ export function Dashboard() {
     if (connected) liveApply('range', () => applyWheelField('range', v))
   }
 
-  // Curseur intensité FFB : appliqué en direct sur axis.fxratio (fxRatio).
-  const setFxRatio = (v: number) => {
-    setWheelConfig({ ...wheelConfig, fxRatio: v })
-    if (connected) liveApply('fxRatio', () => applyWheelField('fxRatio', v))
+  // Curseur Couple max : appliqué en direct sur axis.maxtorque (maxTorque).
+  const setMaxTorque = (v: number) => {
+    setWheelConfig({ ...wheelConfig, maxTorque: v })
+    if (connected) liveApply('maxTorque', () => applyWheelField('maxTorque', v))
   }
 
   // live.position vient de axis.curpos? (degrés HID) : zeroenc et axis.invert
@@ -113,7 +116,7 @@ export function Dashboard() {
   const clamped = Math.max(-halfRange, Math.min(halfRange, hidPos))
   const posPct = 50 + (clamped / angle) * 100   // 0..100 across the bar
 
-  const ffbIntensity = wheelConfig.fxRatio
+  const maxTorqueVal = wheelConfig.maxTorque
 
   const center = async () => {
     if (!connected) { toast(t('common.connect_first'), 'err'); return }
@@ -218,13 +221,16 @@ export function Dashboard() {
               <i className="ti ti-engine" />
             </div>
             <div className="dash-base-controls">
-              <div className="dash-control-label">{t('dash.ffb_intensity')}</div>
+              <div className="dash-control-label">
+                {t('ffb.max_torque')}
+                <i className="ti ti-help-circle" title={limitTooltip} style={{ marginLeft: 6, color: 'var(--text-faint)', cursor: 'help' }} />
+              </div>
               <div className="dash-control-row">
                 <input
-                  type="range" min={0} max={100} value={ffbIntensity}
-                  onChange={(e) => setFxRatio(parseInt(e.target.value))}
+                  type="range" min={0.5} max={effLimitTorque} step={0.1} value={maxTorqueVal}
+                  onChange={(e) => setMaxTorque(parseFloat(e.target.value))}
                 />
-                <span className="dash-control-val">{ffbIntensity} %</span>
+                <span className="dash-control-val">{maxTorqueVal.toFixed(1)} Nm</span>
               </div>
             </div>
           </div>
