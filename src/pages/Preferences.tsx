@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ChangeEvent } from 'react'
 import { useTheme, ACCENT_PRESETS } from '@/context/ThemeContext'
 import { useDevice } from '@/context/DeviceContext'
 import { useNav } from '@/context/NavContext'
 import { useI18n } from '@/context/I18nContext'
 import { LANGS, type Lang, type TKey } from '@/locales'
-import { Toggle } from '@/components/ui'
+import { Toggle, toast } from '@/components/ui'
 import { Dfu } from '@/pages/Tools'
+import { exportConfig, importConfig } from '@/lib/configIo'
 
 // ── Themes ────────────────────────────────────────────────────────────────────
 export function Themes() {
@@ -116,7 +117,7 @@ function NavCustomizer() {
 // ── Settings (container à onglets : Réglages + Flash) ─────────────────────────
 export function Settings() {
   const { t } = useI18n()
-  const [tab, setTab] = useState<'settings' | 'sidebar' | 'flash'>('settings')
+  const [tab, setTab] = useState<'settings' | 'sidebar' | 'config' | 'flash'>('settings')
   return (
     <>
       <div className="odrive-tabs">
@@ -126,12 +127,117 @@ export function Settings() {
         <button className={`odrive-tab ${tab === 'sidebar' ? 'active' : ''}`} onClick={() => setTab('sidebar')}>
           {t('set.menu')}
         </button>
+        <button className={`odrive-tab ${tab === 'config' ? 'active' : ''}`} onClick={() => setTab('config')}>
+          {t('set.tab_config')}
+        </button>
         <button className={`odrive-tab ${tab === 'flash' ? 'active' : ''}`} onClick={() => setTab('flash')}>
           {t('set.tab_flash')}
         </button>
       </div>
-      {tab === 'settings' ? <SettingsForm /> : tab === 'sidebar' ? <NavCustomizer /> : <Dfu />}
+      {tab === 'settings' ? <SettingsForm /> : tab === 'sidebar' ? <NavCustomizer /> : tab === 'config' ? <ConfigIoCard /> : <Dfu />}
     </>
+  )
+}
+
+// ── Import / Export config (onglet dédié, entre Menu latéral et Flash) ─────────
+// Porte l'import/export de l'interface web : un JSON plat { path: valeur brute }
+// lu/écrit via configIo.ts. Export = téléchargement Blob ; import = <input file>.
+// Import → RAM, puis Save (sys.save! + ss) + reboot pour persister/appliquer.
+function ConfigIoCard() {
+  const { connected, pausePolling } = useDevice()
+  const { t } = useI18n()
+  const [busy, setBusy] = useState<null | 'export' | 'import' | 'save'>(null)
+  // Un import écrit en RAM ; il faut un Save (sys.save! + ss) + reboot pour qu'il
+  // soit pris en compte. Le bouton Save n'est actif qu'après un import réussi.
+  const [loaded, setLoaded] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const doExport = async () => {
+    if (!connected) { toast(t('common.connect_first'), 'err'); return }
+    setBusy('export')
+    const resume = pausePolling()
+    try {
+      const { config, read } = await exportConfig()
+      if (read === 0) { toast(t('set.cfg_export_empty'), 'err'); return }
+      const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'odrive_config_' + new Date().toISOString().replace(/[:.]/g, '-') + '.json'
+      a.click()
+      URL.revokeObjectURL(url)
+      toast(t('set.cfg_exported', { n: read }))
+    } catch (e) {
+      toast(t('common.error_detail', { msg: String(e) }), 'err')
+    } finally { resume(); setBusy(null) }
+  }
+
+  const pickImport = () => {
+    if (!connected) { toast(t('common.connect_first'), 'err'); return }
+    if (fileRef.current) { fileRef.current.value = ''; fileRef.current.click() }
+  }
+
+  const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    let obj: Record<string, unknown>
+    try {
+      obj = JSON.parse(await file.text())
+    } catch {
+      toast(t('set.cfg_import_invalid'), 'err'); return
+    }
+    setBusy('import')
+    const resume = pausePolling()
+    try {
+      const r = await importConfig(obj)
+      if (r.total === 0) { toast(t('set.cfg_import_nomatch'), 'err'); return }
+      setLoaded(true)   // active le bouton Save
+      toast(t('set.cfg_imported', { ok: r.ok, fail: r.fail }), r.fail === 0 ? 'ok' : 'err')
+    } catch (err) {
+      toast(t('common.error_detail', { msg: String(err) }), 'err')
+    } finally { resume(); setBusy(null) }
+  }
+
+  // Persiste l'import : désarme le moteur, sauve l'EEPROM FFB (sys.save!) puis la
+  // NVM ODrive (ss) qui reboote la carte — indispensable pour appliquer l'import.
+  const doSave = async () => {
+    if (!connected) { toast(t('common.connect_first'), 'err'); return }
+    setBusy('save')
+    const resume = pausePolling()
+    try {
+      await window.ow?.send('w axis0.requested_state 1')   // désarmement (IDLE)
+      await new Promise((r) => setTimeout(r, 300))
+      await window.ow?.query('sys.save!')                  // FFB EEPROM (S1/S2)
+      await window.ow?.send('ss')                          // ODrive NVM (S10/S11) + reboot
+      setLoaded(false)
+      toast(t('set.cfg_saved'))
+    } catch (e) {
+      toast(t('common.error_detail', { msg: String(e) }), 'err')
+    } finally { resume(); setBusy(null) }
+  }
+
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="card__head"><i className="ti ti-file-download" />{t('set.cfg_title')}</div>
+      <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '0 0 14px', lineHeight: 1.7 }}>
+        {t('set.cfg_desc')}
+      </p>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <button className="btn btn--primary" onClick={doExport} disabled={!connected || busy !== null}>
+          <i className="ti ti-download" /> {busy === 'export' ? t('set.cfg_reading') : t('set.cfg_export')}
+        </button>
+        <button className="btn" onClick={pickImport} disabled={!connected || busy !== null}>
+          <i className="ti ti-upload" /> {busy === 'import' ? t('set.cfg_applying') : t('set.cfg_import')}
+        </button>
+        <button className="btn btn--primary" onClick={doSave} disabled={!connected || busy !== null || !loaded}>
+          <i className="ti ti-device-floppy" /> {busy === 'save' ? t('set.cfg_saving') : t('set.cfg_save')}
+        </button>
+        <input ref={fileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={onFile} />
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '12px 0 0', lineHeight: 1.6 }}>
+        {t('set.cfg_save_hint')}
+      </p>
+    </div>
   )
 }
 

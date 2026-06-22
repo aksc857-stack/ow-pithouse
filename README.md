@@ -70,9 +70,9 @@ link — see [How device communication works](#how-device-communication-works).)
 | Area | State |
 |------|-------|
 | Auto-connect by USB **VID:PID** (`1209:0D40`), independent of COM number | ✅ working |
-| **Dashboard** — wheel visual with live HID-direction rotation, angle presets, live FFB intensity, output torque, **invert axis/FFB**, **profiles card** (click a profile to apply, create, update the active profile) | ✅ working |
+| **Dashboard** — wheel visual with live HID-direction rotation, angle presets, **max torque** slider (capped at the motor's physical limit), **invert axis/FFB**, **profiles card** (click a profile to apply, create, update the active profile) | ✅ working |
 | **ODrive** tab — PSU/RBrake, Axis 0, Motor, Encoder, Controller (full schema, read-only calibration fields flagged) | ✅ values read correctly |
-| **FFB** tab — wheel (range, max torque, master gain, fx ratio), **per-effect game gains** (`fx.*`), **always-on added effects** (`axis.*`), end-stop. Correct paths & scales, **applied live as you drag** | ✅ working |
+| **FFB** tab — wheel (range, max torque, master gain, fx ratio), **per-effect game gains** (`fx.*`), **always-on added effects** (`axis.*`), end-stop. Correct paths & scales, **applied live as you drag**. Max torque is **capped at the physical limit** (`current_lim × torque_constant`, capped by `torque_lim`) with auto-clamp on limit drop | ✅ working |
 | **Filters** tab — per-effect biquad low-pass (`fx.filter*` freq + Q), tooltips, live-applied | ✅ working |
 | **Status** tab — decoded error registers (odrv/axis/motor/encoder/controller) + state-machine & NVM actions | ✅ working |
 | **Profiles** — capture the FFB + Filters config into a named profile, apply it back, rename, delete, **import the game icon from its `.exe`** | ✅ working |
@@ -84,8 +84,10 @@ link — see [How device communication works](#how-device-communication-works).)
 | **Languages** — FR / EN / PT-BR switcher in Settings, persisted | 🚧 UI translated (Dashboard, FFB, Filters, Settings, Profiles, Status, Console, DFU, command list, decoded errors) |
 | **Overlay** (in-game telemetry window) | 🚧 experimental |
 | Saving — live edits write to RAM instantly; **Save** persists FFB EEPROM (`sys.save!`) + ODrive NVM (`ss`) | ✅ working |
+| **Config import/export** (Settings → *Config* tab) — export the full board config to a JSON file and import it back, in the **reference web-interface format**; **Save** (`sys.save!` + `ss`, reboot) to persist an import | ✅ working |
+| **Inputs (GPIO)** — configure the MKS XDrive Mini GPIOs (1–4 & 6) as HID joystick inputs (buttons / axes) with live preview | 🔜 planned — coming soon |
 
-Anything marked 🚧 may show placeholder or inconsistent values for now.
+Anything marked 🚧 may show placeholder or inconsistent values for now; 🔜 means planned / coming soon (not yet implemented).
 
 ## Tech stack
 
