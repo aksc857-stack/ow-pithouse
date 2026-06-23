@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, type CSSProperties } from 'react'
 
 // ── Slider ────────────────────────────────────────────────────────────────────
 interface SliderProps {
@@ -15,6 +15,8 @@ interface SliderProps {
 
 export function Slider({ label, value, min, max, step = 1, unit = '', format, onChange, hint }: SliderProps) {
   const display = format ? format(value) : `${value}${unit}`
+  // Position de remplissage (0..100 %) : la couleur ne va que jusqu'au pouce.
+  const fillPct = max > min ? ((value - min) / (max - min)) * 100 : 0
   return (
     <div className="slider">
       <div className="slider__head">
@@ -26,6 +28,7 @@ export function Slider({ label, value, min, max, step = 1, unit = '', format, on
       </div>
       <input
         type="range" min={min} max={max} step={step} value={value}
+        style={{ '--fill': `${fillPct}%` } as CSSProperties}
         onChange={(e) => onChange(parseFloat(e.target.value))}
       />
     </div>
