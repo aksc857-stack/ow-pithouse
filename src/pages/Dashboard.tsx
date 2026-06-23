@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useDevice } from '@/context/DeviceContext'
 import { useLiveApply } from '@/hooks/useLiveApply'
 import { useI18n } from '@/context/I18nContext'
@@ -7,8 +7,13 @@ import { writeProp } from '@/lib/odrive'
 import { applyWheelField, applyProfileSettings, captureProfileSettings } from '@/lib/ffbConfig'
 import { useTorqueLimit } from '@/hooks/useTorqueLimit'
 import { loadProfiles, saveProfiles, PROFILES_EVENT } from '@/lib/profiles'
+import {
+  loadPedals, savePedals, snapshotAxes, readAxis,
+  PEDAL_KEYS, type PedalKey, type PedalsState, type AxisSample,
+} from '@/lib/pedals'
 import type { GameProfile } from '@/types'
 import wheelImg from '@/assets/wheel.png'
+import pedalImg from '@/assets/pedal.png'
 
 const ANGLE_PRESETS = [360, 540, 720, 900, 1080]
 
@@ -22,8 +27,6 @@ export function Dashboard() {
   // Profils enregistrés (capturés ici ou dans le menu Profils — même localStorage).
   const [profiles, setProfiles] = useState<GameProfile[]>(loadProfiles)
   const [busy, setBusy] = useState(false)
-  // Modal de création (Electron ne supporte pas window.prompt) : nom seul.
-  const [form, setForm] = useState<{ name: string } | null>(null)
 
   // Resynchro live si un autre acteur modifie les profils (menu Profils, auto-switch).
   useEffect(() => {
@@ -31,6 +34,56 @@ export function Dashboard() {
     window.addEventListener(PROFILES_EVENT, onChange)
     return () => window.removeEventListener(PROFILES_EVENT, onChange)
   }, [])
+
+  // ── Pédales (lecture seule via Gamepad API) ──
+  // Bindings mémorisés (axe ↔ pédale) + axes masqués, persistés en localStorage.
+  const [ped, setPed] = useState<PedalsState>(loadPedals)
+  // Valeurs live 0..100 (ou null si non lié / indisponible).
+  const [pedalVals, setPedalVals] = useState<Record<PedalKey, number | null>>({ throttle: null, brake: null, clutch: null })
+  // Pédale en cours de liaison (« Lier » cliqué → on attend un mouvement d'axe).
+  const [binding, setBinding] = useState<PedalKey | null>(null)
+  // Référence des axes au moment du clic « Lier » (détection par delta).
+  const bindBaseline = useRef<AxisSample[]>([])
+
+  const persistPed = (next: PedalsState) => { setPed(next); savePedals(next) }
+
+  const startBind = (key: PedalKey) => {
+    bindBaseline.current = snapshotAxes()
+    setBinding((cur) => (cur === key ? null : key))   // re-clic = annuler
+  }
+  const toggleHide = (key: PedalKey) => {
+    const hidden = ped.hidden.includes(key)
+      ? ped.hidden.filter((k) => k !== key)
+      : [...ped.hidden, key]
+    persistPed({ ...ped, hidden })
+  }
+
+  // Boucle de lecture des axes + détection du binding (~60 ms).
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPedalVals({
+        throttle: readAxis(ped.bindings.throttle),
+        brake: readAxis(ped.bindings.brake),
+        clutch: readAxis(ped.bindings.clutch),
+      })
+      if (binding) {
+        // Cherche l'axe dont la valeur a le plus bougé depuis le clic « Lier ».
+        let best: { gamepad: number; axis: number } | null = null
+        let bestDelta = 0.35   // seuil pour ignorer le bruit / dérive
+        for (const cur of snapshotAxes()) {
+          const base = bindBaseline.current.find((b) => b.gamepad === cur.gamepad && b.axis === cur.axis)
+          const delta = base ? Math.abs(cur.value - base.value) : 0
+          if (delta > bestDelta) { bestDelta = delta; best = { gamepad: cur.gamepad, axis: cur.axis } }
+        }
+        if (best) {
+          persistPed({ ...ped, bindings: { ...ped.bindings, [binding]: best } })
+          toast(t('ped.bound', { name: t(`dash.${binding}`) }))
+          setBinding(null)
+        }
+      }
+    }, 60)
+    return () => clearInterval(id)
+  }, [ped, binding, t])
 
   const persist = (next: GameProfile[]) => {
     setProfiles(next)
@@ -53,29 +106,6 @@ export function Dashboard() {
     } finally { setBusy(false) }
   }
 
-  // Création : capture les réglages FFB + Filtres courants de la carte.
-  const openCreate = () => {
-    if (!connected) { toast(t('prof.connect_capture'), 'err'); return }
-    setForm({ name: '' })
-  }
-
-  const submitCreate = async () => {
-    if (!form) return
-    const name = form.name.trim()
-    if (!name) { toast(t('prof.name_required'), 'err'); return }
-    if (!connected) { toast(t('prof.connect_capture'), 'err'); return }
-    setBusy(true)
-    const resume = pausePolling()
-    try {
-      const settings = await captureProfileSettings(wheelConfig)
-      persist([...profiles, { id: Date.now().toString(), name, icon: 'ti-device-gamepad', settings }])
-      toast(t('prof.created', { name }))
-      setForm(null)
-    } catch (e) {
-      toast(t('prof.err_capture', { msg: String(e) }), 'err')
-    } finally { resume(); setBusy(false) }
-  }
-
   // Met à jour le profil actif avec les réglages courants (capture carte + wheelConfig).
   const updateActive = async (id: string) => {
     if (!connected) { toast(t('common.connect_first'), 'err'); return }
@@ -89,11 +119,6 @@ export function Dashboard() {
       toast(t('common.error_detail', { msg: String(e) }), 'err')
     } finally { resume(); setBusy(false) }
   }
-
-  const summary = (p: GameProfile) =>
-    p.settings
-      ? t('prof.summary', { torque: p.settings.wheel.maxTorque, range: p.settings.wheel.range, fxRatio: p.settings.wheel.fxRatio })
-      : t('prof.summary_none')
 
   const angle = wheelConfig.range
   // Curseur angle : état UI immédiat + écriture live debouncée.
@@ -144,7 +169,7 @@ export function Dashboard() {
 
   return (
     <>
-      <div className="grid grid--2" style={{ alignItems: 'stretch' }}>
+      <div className="grid dash-grid" style={{ alignItems: 'stretch' }}>
         {/* ── Left card: the wheel ── */}
         <div className="card dash-wheel-card">
           <div className="dash-card-title">{connected ? t('dash.wheel_name') : t('dash.no_wheel')}</div>
@@ -228,6 +253,7 @@ export function Dashboard() {
               <div className="dash-control-row">
                 <input
                   type="range" min={0.5} max={effLimitTorque} step={0.1} value={maxTorqueVal}
+                  style={{ '--fill': `${effLimitTorque > 0.5 ? ((maxTorqueVal - 0.5) / (effLimitTorque - 0.5)) * 100 : 0}%` } as CSSProperties}
                   onChange={(e) => setMaxTorque(parseFloat(e.target.value))}
                 />
                 <span className="dash-control-val">{maxTorqueVal.toFixed(1)} Nm</span>
@@ -240,13 +266,68 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* ── Carte Profils (liste applicable + création) ── */}
-        <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {/* ── Carte Pédales (lecture seule Gamepad API : lier / masquer) ── */}
+        <div className="card dash-pedals-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div className="dash-card-title">{t('dash.pedals')}</div>
+
+          <div className="dash-pedals">
+            <div className="dash-pedals-img">
+              <img src={pedalImg} alt={t('dash.pedals')} />
+            </div>
+            <div className="dash-pedals-axes">
+              {PEDAL_KEYS.map((key) => {
+                const label = t(`dash.${key}`)
+                const hidden = ped.hidden.includes(key)
+                const val = pedalVals[key]
+
+                // Axe masqué : ligne compacte, barré, œil-fermé pour réafficher.
+                if (hidden) {
+                  return (
+                    <div key={key} className="dash-pedal dash-pedal--hidden">
+                      <span className="dash-pedal-label dash-pedal-label--off">{label}</span>
+                      <button className="dash-pedal-eye" onClick={() => toggleHide(key)} title={t('ped.show')}>
+                        <i className="ti ti-eye-off" />
+                      </button>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div key={key} className="dash-pedal">
+                    <div className="dash-pedal-head">
+                      <span className="dash-pedal-label">{label}</span>
+                      <span className="dash-pedal-val">{val == null ? t('ped.unbound') : `${val}%`}</span>
+                    </div>
+                    <div className="dash-pedal-row">
+                      <button
+                        className={`btn btn--sm dash-pedal-bind ${binding === key ? 'btn--primary' : ''}`}
+                        onClick={() => startBind(key)}
+                        title={t('ped.bind')}
+                      >
+                        {binding === key ? t('ped.binding') : t('ped.bind')}
+                      </button>
+                      <div className="dash-pedal-track">
+                        <div className="dash-pedal-fill" style={{ width: `${val ?? 0}%` }} />
+                      </div>
+                      <button className="dash-pedal-eye" onClick={() => toggleHide(key)} title={t('ped.hide')}>
+                        <i className="ti ti-eye" />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+        </div>
+        </div>
+
+        {/* ── Colonne 3 : Profils à la verticale (façon Moza Game Launcher) ── */}
+        <div style={{ position: 'relative', minHeight: 0 }}>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
+        <div className="card dash-prof-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div className="dash-card-title dash-prof-head">
             <span>{t('prof.title')}</span>
-            <button className="btn btn--sm btn--primary" onClick={openCreate} disabled={!connected || busy}>
-              <i className="ti ti-plus" /> {t('prof.create')}
-            </button>
           </div>
 
           <div className="dash-prof-list">
@@ -259,22 +340,16 @@ export function Dashboard() {
                 className={`dash-prof-row ${p.active ? 'active' : ''}`}
                 onClick={() => !busy && applyProfile(p.id)}
                 role="button"
-                title={t('prof.load')}
+                title={p.name}
               >
                 <div className="dash-prof-icon">
                   {p.iconImage
                     ? <img src={p.iconImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     : <i className={`ti ${p.icon}`} />}
                 </div>
-                <div className="dash-prof-info">
-                  <div className="dash-prof-name">
-                    {p.name}{p.active && <span className="dash-prof-badge">● {t('prof.active')}</span>}
-                  </div>
-                  <div className="dash-prof-sum">{summary(p)}</div>
-                </div>
                 {p.active && p.settings && (
                   <button
-                    className="btn btn--sm btn--primary"
+                    className="btn btn--sm btn--primary dash-prof-save"
                     onClick={(e) => { e.stopPropagation(); updateActive(p.id) }}
                     disabled={busy}
                     title={t('prof.recapture')}
@@ -289,43 +364,6 @@ export function Dashboard() {
         </div>
         </div>
       </div>
-
-      {/* Modal création (capture des réglages courants) */}
-      {form && (
-        <div
-          onClick={() => !busy && setForm(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: 380, background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 20, boxShadow: '0 16px 40px rgba(0,0,0,.5)' }}
-          >
-            <div className="card__head" style={{ marginBottom: 14 }}>
-              <i className="ti ti-plus" />{t('prof.new')}
-            </div>
-            <div className="field" style={{ marginBottom: 16 }}>
-              <label>{t('prof.name_label')}</label>
-              <input
-                autoFocus
-                value={form.name}
-                onChange={(e) => setForm({ name: e.target.value })}
-                onKeyDown={(e) => e.key === 'Enter' && submitCreate()}
-                placeholder={t('prof.name_ph')}
-                style={{ width: '100%', padding: '8px 12px', background: 'var(--bg-sunken)', color: 'var(--text)', border: '1px solid var(--border-soft)', borderRadius: 'var(--r-sm)', fontSize: 13, outline: 'none' }}
-              />
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 16, lineHeight: 1.6 }}>
-              {t('prof.capture_note')}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button className="btn" onClick={() => setForm(null)} disabled={busy}>{t('common.cancel')}</button>
-              <button className="btn btn--primary" onClick={submitCreate} disabled={busy}>
-                <i className="ti ti-device-floppy" /> {t('prof.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

@@ -25,6 +25,14 @@
   --accent-ink:  #06241d;
   --accent-soft: #00d4aa22;
 
+  // Dégradé accent (clair → foncé) pour les curseurs de réglage et barres d'axe.
+  // Dérivé de --accent → suit automatiquement le thème.
+  --accent-grad: linear-gradient(
+    to right,
+    color-mix(in srgb, color-mix(in oklab, var(--accent), white 20%), transparent 33%),
+    color-mix(in srgb, color-mix(in oklab, var(--accent), black 38%), transparent 33%)
+  );
+
   // Semantic
   --green:  #00d4aa;
   --amber:  #f59e0b;
@@ -355,7 +363,11 @@ input, select { font-family: inherit; }
     width: 100%;
     height: 5px;
     -webkit-appearance: none;
-    background: var(--bg-sunken);
+    // Remplissage dégradé jusqu'au pouce (--fill posé en JS), reste neutre.
+    background-color: var(--bg-sunken);
+    background-image: var(--accent-grad);
+    background-repeat: no-repeat;
+    background-size: var(--fill, 0%) 100%;
     border-radius: 3px;
     outline: none;
     cursor: pointer;
@@ -640,9 +652,10 @@ input, select { font-family: inherit; }
       -webkit-appearance: none;
       width: 18px; height: 18px;
       border-radius: 50%;
-      background: #fff;
+      background: var(--accent);
+      border: 3px solid var(--bg-sunken);
+      box-shadow: 0 0 0 1px var(--accent);
       cursor: pointer;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     }
   }
 }
@@ -685,6 +698,128 @@ input, select { font-family: inherit; }
   }
 }
 
+// ── Dashboard : grille 3 colonnes (volant | base+pédales | profils vertical) ──
+.dash-grid {
+  // Colonne Profils en largeur fixe (icônes seules) → ajustable au pixel près.
+  grid-template-columns: 1.5fr 1.15fr 90px;
+}
+@media (max-width: 1100px) {
+  .dash-grid { grid-template-columns: 1fr 1fr; }
+}
+
+// ── Carte Pédales (maquette HID) ──
+.dash-pedals-card { min-height: 240px; }
+.dash-pedals {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 16px;
+}
+// Image du pédalier à gauche des axes.
+.dash-pedals-img {
+  flex-shrink: 0;
+  width: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  img {
+    max-width: 100%;
+    max-height: 130px;
+    object-fit: contain;
+  }
+}
+// Pile verticale des axes (chacun en barre horizontale).
+.dash-pedals-axes {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dash-pedal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.dash-pedal-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dash-pedal-val {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+// Rangée : [Lier] [barre] [œil]
+.dash-pedal-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dash-pedal-bind {
+  flex-shrink: 0;
+  padding: 3px 8px;
+}
+.dash-pedal-eye {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-mute);
+  cursor: pointer;
+  padding: 2px;
+  font-size: 16px;
+  line-height: 1;
+  transition: color 0.12s;
+  &:hover { color: var(--accent); }
+}
+.dash-pedal-track {
+  flex: 1;
+  min-width: 0;
+  height: 10px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.dash-pedal-fill {
+  height: 100%;
+  background: var(--accent-grad);
+  border-radius: 5px;
+  transition: width 0.12s linear;
+}
+.dash-pedal-label {
+  font-size: 13px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  i { margin-right: 4px; }
+}
+// Axe masqué : ligne compacte (label barré + œil pour réafficher).
+.dash-pedal--hidden {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.dash-pedal-label--off {
+  text-decoration: line-through;
+  color: var(--text-faint);
+}
+.dash-pedals-note {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-faint);
+  text-align: center;
+}
+
 // ── Right: base card ──
 .dash-base {
   display: flex;
@@ -718,14 +853,19 @@ input, select { font-family: inherit; }
     flex: 1;
     height: 5px;
     -webkit-appearance: none;
-    background: var(--bg-sunken);
+    background-color: var(--bg-sunken);
+    background-image: var(--accent-grad);
+    background-repeat: no-repeat;
+    background-size: var(--fill, 0%) 100%;
     border-radius: 3px;
     outline: none;
     &::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 16px; height: 16px;
+      width: 18px; height: 18px;
       border-radius: 50%;
-      background: var(--text);
+      background: var(--accent);
+      border: 3px solid var(--bg-sunken);
+      box-shadow: 0 0 0 1px var(--accent);
       cursor: pointer;
     }
   }
@@ -777,12 +917,15 @@ input, select { font-family: inherit; }
 }
 
 // ── Carte Profils (Dashboard) : liste scrollable + lignes denses ──
+// Carte resserrée : moins de padding entre le bord et les vignettes.
+.dash-prof-card { padding: 6px; }
+
 .dash-prof-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;   // titre centré
   gap: 12px;
-  margin-bottom: 14px;   // même rythme que les autres cartes avant leur contenu
+  margin-bottom: 12px;       // même rythme que les autres cartes avant leur contenu
 }
 
 .dash-prof-list {
@@ -802,10 +945,13 @@ input, select { font-family: inherit; }
 }
 
 .dash-prof-row {
+  position: relative;       // ancre le bouton Sauvegarder du profil actif
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  justify-content: center;  // icône seule, centrée (textes retirés sur le Dashboard)
+  width: 92%;               // vignette légèrement plus étroite que la carte…
+  margin: 0 auto;           // …et centrée horizontalement
+  padding: 8px;
   flex-shrink: 0;            // ne pas comprimer les lignes : laisser la liste déborder → scroll
   background: var(--bg-sunken);
   border: 1px solid var(--border);
@@ -817,9 +963,17 @@ input, select { font-family: inherit; }
   &.active { border-color: var(--accent); }
 }
 
+// Bouton 💾 (recapture) du profil actif : épinglé dans le coin de la vignette.
+.dash-prof-save {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 2px 5px;
+}
+
 .dash-prof-icon {
-  width: 34px;
-  height: 34px;
+  width: 46px;
+  height: 46px;
   flex-shrink: 0;
   border-radius: var(--r-md);
   background: var(--accent-soft);
@@ -827,7 +981,7 @@ input, select { font-family: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  font-size: 22px;
   overflow: hidden;   // clippe l'icône importée aux coins arrondis
 }
 
