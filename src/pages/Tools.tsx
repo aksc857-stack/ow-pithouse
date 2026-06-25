@@ -3,7 +3,7 @@ import { useDevice } from '@/context/DeviceContext'
 import { useI18n } from '@/context/I18nContext'
 import { usePersistentTab } from '@/hooks/usePersistentTab'
 import { toast } from '@/components/ui'
-import { readProp } from '@/lib/odrive'
+import { readProp, writeProp } from '@/lib/odrive'
 import { ERROR_DEFS, decodeError, toHex } from '@/lib/odriveErrors'
 import { applyProfileSettings, captureProfileSettings } from '@/lib/ffbConfig'
 import { loadProfiles, saveProfiles, PROFILES_EVENT } from '@/lib/profiles'
@@ -333,6 +333,14 @@ function StatusPanel() {
     toast(t('status.cmd_sent', { cmd }))
   }
 
+  // Reset zero : annule l'offset HID virtuel (axis.zeroofs=0, protocole offb).
+  const resetZero = async () => {
+    if (!connected) { toast(t('common.connect_first'), 'err'); return }
+    if (!window.confirm(t('status.confirm_reset_zero'))) return
+    await writeProp('axis.zeroofs', 0, 'offb')
+    toast(t('status.reset_zero_ok'))
+  }
+
   return (
     <>
       <div className="page-head">
@@ -385,6 +393,11 @@ function StatusPanel() {
               <span style={{ fontSize: 10, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>{a.sub}</span>
             </button>
           ))}
+          <button className="btn" onClick={resetZero} disabled={!connected}
+            style={{ flexDirection: 'column', alignItems: 'flex-start', height: 'auto', padding: '8px 12px', gap: 2 }}>
+            <span style={{ fontSize: 12 }}>Reset zero</span>
+            <span style={{ fontSize: 10, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>axis.zeroofs=0</span>
+          </button>
         </div>
       </div>
     </>
