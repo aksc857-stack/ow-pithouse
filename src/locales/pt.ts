@@ -178,6 +178,8 @@ export const pt: Partial<Record<TKey, string>> = {
   'status.actions': 'Ações',
   'status.cmd_sent': 'Comando enviado: {cmd}',
   'status.confirm_erase': 'Apaga a config + reboot. Confirmar?',
+  'status.confirm_reset_zero': 'Resetar zeroOffset para 0? O centro lógico volta à referência original do encoder. Salve depois para persistir.',
+  'status.reset_zero_ok': 'zeroOffset resetado para 0',
   'status.st_idle': 'state 1',
   'status.st_motor_cal': 'state 4 · mede R+L ~5s',
   'status.st_enc_index': 'state 6 · procura índice Z',

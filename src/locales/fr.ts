@@ -185,6 +185,8 @@ export const fr = {
   'status.actions': 'Actions',
   'status.cmd_sent': 'Commande envoyée : {cmd}',
   'status.confirm_erase': 'Efface la config + reboot. Confirmer ?',
+  'status.confirm_reset_zero': 'Remettre zeroOffset à 0 ? Le centre logique revient à la référence d\'origine de l\'encodeur. Sauvegardez ensuite pour persister.',
+  'status.reset_zero_ok': 'zeroOffset remis à 0',
   'status.st_idle': 'state 1',
   'status.st_motor_cal': 'state 4 · mesure R+L ~5s',
   'status.st_enc_index': 'state 6 · cherche index Z',
