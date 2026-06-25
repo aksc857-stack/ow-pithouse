@@ -13,7 +13,11 @@ export interface SchemaField {
   protocol: FieldProtocol
   readonly?: boolean
   opts?: Record<number, string>  // enum options
+  hint?: string         // tooltip natif au survol (icône ?)
 }
+
+// Attache un hint (tooltip) à un champ sans toucher aux builders.
+const withHint = (field: SchemaField, hint: string): SchemaField => ({ ...field, hint })
 
 export interface SchemaGroup {
   group: string
@@ -94,7 +98,7 @@ const PSU: SchemaSection = {
 // ── SECTION: Axis 0 ───────────────────────────────────────────────────────────
 const ax = mk('axis0.config.')
 const AXIS0: SchemaSection = {
-  id: 'axis0', label: 'Axis 0',
+  id: 'axis0', label: 'Startup Seq',
   groups: [
     { group: 'Startup Sequence', fields: [
       ax.B('startup_motor_calibration'),
@@ -206,8 +210,10 @@ const ENCODER: SchemaSection = {
   id: 'encoder', label: 'Encoder',
   groups: [
     { group: 'Mode / résolution', fields: [
-      en.E('mode', ENUM_ENCODER_MODE),
-      en.I('cpr'),
+      withHint(en.E('mode', ENUM_ENCODER_MODE),
+        '0 INCREMENTAL · 1 HALL · 257 SPI_ABS_AMS (AS5047) · 258 AEAT · 259 RLS · 261 MT6835 (21b SPI)'),
+      withHint(en.I('cpr'),
+        'ABZ ×4 (datasheet) · AS5047 = 16384 (14 bits) · MT6835 = 2097152 (21 bits)'),
       en.I_RO('direction'),
       en.F('bandwidth'),
       en.B('pre_calibrated'),
@@ -232,7 +238,8 @@ const ENCODER: SchemaSection = {
       en.B('ignore_illegal_hall_state'),
     ]},
     { group: 'Pins', fields: [
-      en.I('abs_spi_cs_gpio_pin'),
+      withHint(en.I('abs_spi_cs_gpio_pin'),
+        'GPIO du CS quand mode = SPI_ABS_* — AS5047 onboard MKS = 7 · MT6835 sur port SPI ODESC V4.2 = 6'),
       en.I('sincos_gpio_pin_sin'),
       en.I('sincos_gpio_pin_cos'),
     ]},
