@@ -133,10 +133,12 @@ export function Dashboard() {
     if (connected) liveApply('maxTorque', () => applyWheelField('maxTorque', v))
   }
 
-  // live.position vient de axis.curpos? (degrés HID) : zeroenc et axis.invert
-  // sont déjà appliqués par le firmware. Signe inversé car la convention curpos
-  // est opposée à la rotation CSS (positif = horaire).
-  const hidPos = -live.position
+  // live.position vient de axis.curpos? (degrés HID) : zeroenc ET axis.invert
+  // sont appliqués par le firmware (curpos suit l'invert depuis le fix MT6835).
+  // Donc curpos = la position vue par le jeu → on l'utilise telle quelle, sans
+  // négation, sinon le visuel tournerait à l'envers du HID (rotate positif =
+  // horaire = volant à droite, cohérent avec curpos positif).
+  const hidPos = live.position
   const halfRange = angle / 2
   const clamped = Math.max(-halfRange, Math.min(halfRange, hidPos))
   const posPct = 50 + (clamped / angle) * 100   // 0..100 across the bar
