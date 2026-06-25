@@ -17,6 +17,7 @@ function FieldRow({ field, value, dirty, onChange }: {
     <div className="schema-row">
       <label className="schema-row__label">
         {label}
+        {field.hint && <i className="ti ti-help-circle" title={field.hint} style={{ marginLeft: 6, color: 'var(--text-faint)', cursor: 'help' }} />}
         {field.readonly && <span className="schema-ro">RO</span>}
         {dirty && <span className="schema-dirty" />}
       </label>

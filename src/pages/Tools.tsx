@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useDevice } from '@/context/DeviceContext'
 import { useI18n } from '@/context/I18nContext'
 import { usePersistentTab } from '@/hooks/usePersistentTab'
@@ -391,12 +391,139 @@ function StatusPanel() {
   )
 }
 
+// ── Diagnostic encodeur (MT6835 / AS5047) ──────────────────────────────────────
+// `sys.encraw!` → compteurs SPI ABS (ok/pty/xfr/last) ; `sys.magnet!` → AGC +
+// flags de centrage de l'aimant. Commandes OpenFFBoard exec ('!'), lues en
+// séquence (transport single-flight → pas de collision). Firmware sans support →
+// réponses vides → bandeau « pas de réponse ».
+const parseKV = (s: string | null): Record<string, string> => {
+  const out: Record<string, string> = {}
+  if (!s) return out
+  s.trim().split(/\s+/).forEach((p) => {
+    const eq = p.indexOf('=')
+    if (eq > 0) out[p.slice(0, eq)] = p.slice(eq + 1)
+  })
+  return out
+}
+
+function DiagRow({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12, padding: '3px 0' }}>
+      <span style={{ color: 'var(--text-faint)' }}>{label}</span>
+      <span style={{ fontFamily: 'var(--mono)', color: color ?? 'var(--text)' }}>{value}</span>
+    </div>
+  )
+}
+
+function EncoderDiag() {
+  const { connected } = useDevice()
+  const { t } = useI18n()
+  const [er, setEr] = useState<Record<string, string> | null>(null)
+  const [mg, setMg] = useState<Record<string, string> | null>(null)
+  const [rate, setRate] = useState('')
+  const [live, setLive] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [noResp, setNoResp] = useState(false)
+  const lastOk = useRef<{ n: number; t: number } | null>(null)
+
+  const read = useCallback(async () => {
+    if (!connected || !window.ow) return
+    setBusy(true)
+    try {
+      const erKV = parseKV(await window.ow.query('sys.encraw!'))
+      const mgKV = parseKV(await window.ow.query('sys.magnet!'))
+      const hasEr = erKV.ok !== undefined
+      const hasMg = mgKV.agc !== undefined
+      setNoResp(!hasEr && !hasMg)
+      if (hasEr) {
+        const okN = parseInt(erKV.ok, 10)
+        const now = performance.now()
+        if (lastOk.current) {
+          const dt = (now - lastOk.current.t) / 1000
+          if (dt > 0.1) {
+            const r = (okN - lastOk.current.n) / dt
+            setRate(r >= 1000 ? (r / 1000).toFixed(1) + ' k/s' : Math.round(r) + '/s')
+          }
+        }
+        lastOk.current = { n: okN, t: now }
+        setEr(erKV)
+      }
+      if (hasMg) setMg(mgKV)
+    } finally { setBusy(false) }
+  }, [connected])
+
+  // Polling live 1 Hz (comme la référence, pour ménager le canal série).
+  useEffect(() => {
+    if (!live || !connected) return
+    read()
+    const id = setInterval(read, 1000)
+    return () => clearInterval(id)
+  }, [live, connected, read])
+
+  // Stoppe le live à la déconnexion.
+  useEffect(() => { if (!connected) setLive(false) }, [connected])
+
+  const ptyN = parseInt(er?.pty || '0', 10)
+  const xfrN = parseInt(er?.xfr || '0', 10)
+  const agcN = parseInt(mg?.agc || '0', 10)
+  const agcPct = Math.min(100, Math.max(0, (agcN / 255) * 100))
+  const agcColor = (agcN < 30 || agcN > 220) ? 'var(--red)' : (agcN < 60 || agcN > 192) ? '#ffca28' : '#66bb6a'
+  const statusColor: Record<string, string> = {
+    OK: '#66bb6a', MARGINAL: '#ffca28', MAGNET_TOO_FAR: 'var(--red)', MAGNET_TOO_CLOSE: 'var(--red)',
+    CORDIC_OVERFLOW: 'var(--red)', WAITING_COMPENSATION: '#ffca28', NOT_READY: 'var(--muted)',
+  }
+  const magLbl = (v?: string) => v === '1' ? t('console.diag_warn_lbl') : t('console.diag_ok_lbl')
+  const magCol = (v?: string) => v === '1' ? 'var(--red)' : '#66bb6a'
+
+  return (
+    <div style={{ marginTop: 10, border: '1px solid var(--border)', borderRadius: 'var(--r-md)', background: 'var(--bg-sunken)', padding: '12px 14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}><i className="ti ti-rotate-360" style={{ marginRight: 6 }} />{t('console.diag')}</span>
+        <button className="btn btn--sm" onClick={read} disabled={!connected || busy}>
+          <i className="ti ti-refresh" /> {t('console.diag_read')}
+        </button>
+        <button className={`btn btn--sm ${live ? 'btn--primary' : ''}`} onClick={() => setLive((v) => !v)} disabled={!connected}>
+          <i className={live ? 'ti ti-player-pause' : 'ti ti-player-play'} /> {t('console.diag_live')}
+        </button>
+      </div>
+
+      {noResp && (
+        <div style={{ color: 'var(--text-faint)', fontSize: 12, padding: '4px 0' }}>{t('console.diag_none')}</div>
+      )}
+
+      {!noResp && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-faint)', marginBottom: 4 }}>{t('console.diag_spi')}</div>
+            <DiagRow label={t('console.diag_ok')} value={er?.ok ?? '—'} />
+            <DiagRow label={t('console.diag_rate')} value={rate || '—'} />
+            <DiagRow label={t('console.diag_pty')} value={er?.pty ?? '—'} color={ptyN > 0 ? 'var(--red)' : undefined} />
+            <DiagRow label={t('console.diag_xfr')} value={er?.xfr ?? '—'} color={xfrN > 0 ? 'var(--red)' : undefined} />
+            <DiagRow label={t('console.diag_last')} value={er?.last ?? '—'} />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', color: 'var(--text-faint)', marginBottom: 4 }}>{t('console.diag_magnet')}</div>
+            <DiagRow label={t('console.diag_agc')} value={mg ? `${agcN} / 255` : '—'} />
+            <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-panel)', overflow: 'hidden', margin: '2px 0 6px' }}>
+              <div style={{ height: '100%', width: `${agcPct}%`, background: agcColor, transition: 'width .2s' }} />
+            </div>
+            <DiagRow label={t('console.diag_status')} value={mg?.status ?? '—'} color={statusColor[mg?.status ?? ''] ?? 'var(--text)'} />
+            <DiagRow label={t('console.diag_far')} value={mg ? magLbl(mg.magl) : '—'} color={mg ? magCol(mg.magl) : undefined} />
+            <DiagRow label={t('console.diag_close')} value={mg ? magLbl(mg.magh) : '—'} color={mg ? magCol(mg.magh) : undefined} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Console ───────────────────────────────────────────────────────────────────
 export function Console() {
   const { log, sendCommand, clearLog } = useDevice()
   const { t } = useI18n()
   const [cmd, setCmd] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [diagOpen, setDiagOpen] = useState(false)
   const [filter, setFilter] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -452,6 +579,9 @@ export function Console() {
           <div className="page-head__sub">{t('console.sub')}</div>
         </div>
         <div className="page-head__actions">
+          <button className={`btn ${diagOpen ? 'btn--primary' : ''}`} onClick={() => setDiagOpen((o) => !o)}>
+            <i className="ti ti-rotate-360" /> {t('console.diag')}
+          </button>
           <button className={`btn ${pickerOpen ? 'btn--primary' : ''}`} onClick={() => setPickerOpen((o) => !o)}>
             <i className="ti ti-list-search" /> {t('console.available')}
           </button>
@@ -461,10 +591,12 @@ export function Console() {
         </div>
       </div>
 
+      {diagOpen && <EncoderDiag />}
+
       <div style={{
         background: '#080a0d', border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
         padding: '12px 14px', height: 320, overflowY: 'auto', fontFamily: 'var(--mono)',
-        fontSize: 12, lineHeight: 1.8,
+        fontSize: 12, lineHeight: 1.8, marginTop: 10,
       }}>
         {log.length === 0 && <div style={{ color: 'var(--text-faint)' }}>{t('console.waiting')}</div>}
         {log.map((l, i) => (
