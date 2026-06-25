@@ -63,5 +63,10 @@ odrive-wheel.html
 odrive-wheel new version.html
 CLAUDE.md
 EQ_INTEGRATION_NOTES.md
+<<<<<<< Updated upstream
 MT6835_INTEGRATION.md
 odrive-wheel new version MT6835.html
+=======
+odrive-wheel new version MT6835.html
+MT6835_INTEGRATION.md
+>>>>>>> Stashed changes
