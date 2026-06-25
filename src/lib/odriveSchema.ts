@@ -37,7 +37,7 @@ export const ENUM_STREAM_PROTO = { 0: 'NONE', 1: 'FIBRE', 2: 'ASCII', 3: 'ASCII_
 export const ENUM_ENCODER_MODE = {
   0: 'INCREMENTAL', 1: 'HALL', 2: 'SINCOS',
   256: 'SPI_ABS_CUI', 257: 'SPI_ABS_AMS', 258: 'SPI_ABS_AEAT',
-  259: 'SPI_ABS_RLS', 260: 'SPI_ABS_MA732',
+  259: 'SPI_ABS_RLS', 260: 'SPI_ABS_MA732', 261: 'SPI_ABS_MT6835',
 }
 
 // ── Field builders (prefix-aware) ─────────────────────────────────────────────
